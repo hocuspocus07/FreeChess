@@ -1,13 +1,13 @@
-import { pool } from "../config/db";
+import { pool } from "../config/db.js";
 
 class Move{
-    static async create(game_id, player_id, move_number, move) {
-        const [result] = await pool.query(
-          'INSERT INTO moves (game_id, player_id, move_number, move) VALUES (?, ?, ?, ?)',
-          [game_id, player_id, move_number, move]
-        );
-        return result.insertId;
-    }
+  static async create(gameId, playerId, moveNumber, move) {
+    const [result] = await pool.query(
+      'INSERT INTO moves (game_id, player_id, move_number, move) VALUES (?, ?, ?, ?)',
+      [gameId, playerId, moveNumber, move]
+    );
+    return result.insertId;
+  }
 
     static async findByGameId(game_id) {
         const [rows] = await pool.query(
@@ -48,6 +48,14 @@ class Move{
         );
         return rows[0];
       }
+
+        static async findByGameAndMoveNumber(gameId, moveNumber) {
+          const [rows] = await pool.query(
+            'SELECT * FROM moves WHERE game_id = ? AND move_number = ?',
+            [gameId, moveNumber]
+          );
+          return rows[0]; 
+        }
 }
 
 export default Move;

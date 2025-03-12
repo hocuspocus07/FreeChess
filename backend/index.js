@@ -1,31 +1,13 @@
-import express from "express"
-import http from 'http'
-import { Server } from "socket.io"
-import cors from "cors"
-import { Chess } from "chess.js"
+import express from 'express'
 import dotenv from "dotenv"
 import {  pool,checkDatabaseConnection } from "./config/db.js"
-
+import { app } from './app.js';
 dotenv.config();
-
-const app=express()
-app.use(cors);
-
-const server=http.createServer(app);
-const io=new Server(server,{
-    cors:{
-        origin:'http://localhost:5173',
-        methods:['GET','POST'],
-    }
-});
-
-const chess=new Chess();
-
-
+const port=8000;
 checkDatabaseConnection()
     .then(() => {
-        app.listen(process.env.PORT || 8000, () => {
-            console.log("server listening on ", process.env.PORT);
+        app.listen(port, () => {
+            console.log("server listening on ",port);
         })
     }).catch((error) => {
         console.log("connection failed: ", error);

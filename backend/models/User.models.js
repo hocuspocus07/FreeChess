@@ -11,13 +11,15 @@ class User{
 
     static async findByEmail(email){
         const [rows]=await pool.query(
-            'SELECT * FROM users WEHERE email=?',[email]);
+            'SELECT * FROM users WHERE email=?',[email]);
             return rows[0];
     }
 
     static async findById(id){
-        const [rows]=await pool.query(
-            'SELECT * FROM users WEHERE id=?',[id]);
+        const [rows] = await pool.query(
+            'SELECT id, username, email, created_at FROM users WHERE id = ?',
+            [id]
+          );
             return rows[0];
     }
 
@@ -26,7 +28,7 @@ class User{
             'SELECT * FROM users WHERE username = ?', [username]);
         return rows[0]; 
       }
-      
+
       static async isPasswordCorrect(inputPassword, hashedPassword) {
         return await bcrypt.compare(inputPassword, hashedPassword);
       }
