@@ -1,9 +1,10 @@
 import { pool } from "../config/db.js";
-
+import bcrypt from 'bcrypt'
 class User{
     static async create(username,email,password){
+        const hashedPassword = await bcrypt.hash(password, 10);
         const [result]=await pool.query(
-            'INSERT INTO users(username,email,password) VALUES (?,?,?)',[username,email,password]
+            'INSERT INTO users(username,email,password) VALUES (?,?,?)',[username,email,hashedPassword]
         );
         return result.insertId;
     }
@@ -24,6 +25,10 @@ class User{
         const [rows] = await pool.query(
             'SELECT * FROM users WHERE username = ?', [username]);
         return rows[0]; 
+      }
+      
+      static async isPasswordCorrect(inputPassword, hashedPassword) {
+        return await bcrypt.compare(inputPassword, hashedPassword);
       }
 }
 

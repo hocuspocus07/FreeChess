@@ -16,7 +16,7 @@ class Game{
     }
     
     static async findById(id){
-        const [result]=await pool.query(
+        const [rows]=await pool.query(
             'SELECT * FROM games WHERE id = ?',[id]);
             return rows[0];
     }

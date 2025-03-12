@@ -1,0 +1,40 @@
+-- Create the database
+CREATE DATABASE chess_db;
+
+-- Use the database
+USE chess_db;
+
+-- Create the `users` table
+CREATE TABLE users (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  username VARCHAR(15) NOT NULL UNIQUE,
+  email VARCHAR(100) NOT NULL UNIQUE,
+  password VARCHAR(30) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create the `games` table
+CREATE TABLE games (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  player1_id INT,
+  player2_id INT,
+  winner_id INT,
+  status VARCHAR(20) DEFAULT 'ongoing',
+  start_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  end_time TIMESTAMP,
+  FOREIGN KEY (player1_id) REFERENCES users(id),
+  FOREIGN KEY (player2_id) REFERENCES users(id),
+  FOREIGN KEY (winner_id) REFERENCES users(id)
+);
+
+-- Create the `moves` table
+CREATE TABLE moves (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  game_id INT,
+  player_id INT,
+  move_number INT,
+  move VARCHAR(10) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (game_id) REFERENCES games(id),
+  FOREIGN KEY (player_id) REFERENCES users(id)
+);
