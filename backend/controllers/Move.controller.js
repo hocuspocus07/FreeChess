@@ -1,7 +1,7 @@
 import Move from "../models/Move.models.js";
 
 export const getNextMove=async(req,res)=>{
-    const {gameId,moveNumber}=req.body;
+    const {gameId,moveNumber}=req.params;
     try {
         const nextMove=await Move.findNextMove(gameId,moveNumber);
         if(nextMove){
@@ -15,7 +15,7 @@ export const getNextMove=async(req,res)=>{
 }
 
 export const getPreviousMove= async(req,res)=>{
-    const {gameId,moveNumber}=req.body;
+    const {gameId,moveNumber}=req.params;
     try {
         const prevMove=await Move.findPreviousMove(gameId,moveNumber);
         if(prevMove){
