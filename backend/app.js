@@ -23,7 +23,7 @@ app.use(express.static("public"));
 
 app.use('/chess/game',gameRouter);
 app.use('/chess/users',userRouter);
-app.use('/chess/move',moveRouter);
+app.use('/chess/game',moveRouter);
 const chess=new Chess();
 
 export {app}
