@@ -1,1 +1,8 @@
 @import "tailwindcss";
+@import "flowbite/src/themes/default";
+.hero-bg{
+    background-image: url('../hero-bg.jpg');
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
+}
