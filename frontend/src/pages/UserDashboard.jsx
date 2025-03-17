@@ -1,8 +1,7 @@
 import React from 'react';
 import NavBar from '../components/NavBar';
 import { addCircleOutline, flashOutline, locateOutline, playForwardCircleOutline, removeCircleOutline, reorderTwoOutline, } from 'ionicons/icons';
-import { IonIcon } from '@ionic/react'; // Import IonIcon component
-import PopUp from '../components/PopUp';
+import { IonIcon } from '@ionic/react'; 
 
 const user = {
   username: 'ChessMaster123',
@@ -20,9 +19,9 @@ const user = {
 };
 
 const resultList = {
-  Win: <IonIcon icon={addCircleOutline} />, // Icon for Win
-  Loss: <IonIcon icon={removeCircleOutline} />, // Icon for Loss
-  Draw: <IonIcon icon={reorderTwoOutline} />, // Icon for Draw
+  Win: <IonIcon icon={addCircleOutline} />,
+  Loss: <IonIcon icon={removeCircleOutline} />,
+  Draw: <IonIcon icon={reorderTwoOutline} />, 
 };
 
 const timeControlType = [
@@ -35,13 +34,11 @@ export default function UserDashboard() {
     <div className="min-h-screen bg-[#1a1a1a] text-white font-sans">
       <NavBar />
       <div className="max-w-4xl mx-auto mt-9">
-        {/* User Info Section */}
         <div className="bg-[#2c2c2c] rounded-lg p-6 mb-6 shadow-lg">
           <h1 className="text-3xl font-extrabold mb-2">Welcome, {user.username}</h1>
           <p className="text-gray-400">Joined on {user.dateJoined}</p>
         </div>
 
-        {/* Stats Section */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-6 mx-auto">
   {Object.entries(user.rating).map(([timeControl, rating]) => {
     const timeControlData = timeControlType.find((item) => item[timeControl]);
@@ -53,9 +50,8 @@ export default function UserDashboard() {
         key={timeControl}
         className="bg-[#2c2c2c] h-40 rounded-lg p-6 shadow-lg hover:shadow-xl transition-shadow duration-300"
       >
-        {/* Time Control Icon */}
         <div className={`mx-auto text-center w-10 rounded-xl text-4xl ${color}`}>
-          {icon} {/* Render the icon based on the time control type */}
+          {icon} 
         </div>
         <h2 className="text-xl font-bold mb-2 capitalize text-center">{timeControl} Rating</h2>
         <p className="text-3xl text-[#7fa650] text-center">{rating}</p>
@@ -64,7 +60,6 @@ export default function UserDashboard() {
   })}
 </div>
 
-        {/* Recent Matches Section */}
         <div className="bg-[#2c2c2c] rounded-lg p-6 shadow-lg">
           <h2 className="text-2xl font-bold mb-4">Recent Matches</h2>
           <div className="overflow-x-auto">

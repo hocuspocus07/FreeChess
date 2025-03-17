@@ -6,3 +6,19 @@
     background-repeat: no-repeat;
     background-size: cover;
 }
+
+.scrollbar-custom::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  .scrollbar-custom::-webkit-scrollbar-track {
+    background: #3a3f49;
+  }
+  
+  .scrollbar-custom::-webkit-scrollbar-thumb {
+    background: #25292f;
+  }
+  
+  .scrollbar-custom::-webkit-scrollbar-thumb:hover {
+    background: #718096;
+  }
