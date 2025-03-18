@@ -1,5 +1,6 @@
 import Game from "../models/Game.models.js";
 import Move from "../models/Move.models.js";
+import User from "../models/User.models.js";
 
 export const createGame = async (req, res) => {
     const { player1_id, player2_id } = req.body;
@@ -62,3 +63,34 @@ export const getMoves=async(req,res)=>{
         res.status(500).json({message:'failed to fetch moves',error:error.message})
     }
 }
+
+export const getGamesByUser = async (req, res) => {
+  const { userId } = req.params;
+
+  try {
+    const games = await Game.findByUserId(userId);
+    console.log('Games fetched:', games); 
+
+    const gamesWithOpponents = await Promise.all(
+      games.map(async (game) => {
+        const opponentId = game.player1_id === parseInt(userId) ? game.player2_id : game.player1_id;
+        const opponentUsername = await User.findUsernameById(opponentId);
+
+        return {
+          ...game,
+          opponent_id: opponentId,
+          opponent_username: opponentUsername || 'Unknown', 
+        };
+      })
+    );
+
+    if (gamesWithOpponents.length > 0) {
+      res.status(200).json({ games: gamesWithOpponents });
+    } else {
+      res.status(404).json({ message: 'No games found for this user' });
+    }
+  } catch (error) {
+    console.error('Error in getGamesByUser:', error); 
+    res.status(500).json({ error: 'Failed to fetch games', details: error.message });
+  }
+};

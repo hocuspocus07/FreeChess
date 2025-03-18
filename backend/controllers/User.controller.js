@@ -1,5 +1,8 @@
 import User from "../models/User.models.js";
 import jwt from 'jsonwebtoken'
+import dotenv from 'dotenv'
+
+dotenv.config()
 
 export const registerUser = async (req, res) => {
   try {
@@ -43,12 +46,37 @@ export const loginUser = async (req, res) => {
     if (!isPasswordValid) {
       return res.status(401).json({ message: "Invalid password" });
     }
-    const token = jwt.sign(
-      { _id: user.id, username: user.username }, // Payload
-      process.env.ACCESS_TOKEN_SECRET, // Secret key
-      { expiresIn: process.env.ACCESS_TOKEN_EXPIRY } // Token expiration
+    const accessToken = jwt.sign(
+      { _id: user.id, username: user.username },
+      process.env.ACCESS_TOKEN_SECRET,
+      { expiresIn: process.env.ACCESS_TOKEN_EXPIRY }
     );
-    res.status(200).json({ message: "User logged in successfully!", token });
+
+    const refreshToken = jwt.sign(
+      { _id: user.id },
+      process.env.REFRESH_TOKEN_SECRET,
+      { expiresIn: process.env.REFRESH_TOKEN_EXPIRY }
+    );
+console.log(accessToken,refreshToken);
+    await User.updateRefreshToken(user.id, refreshToken);
+
+    // Set cookies
+    res.cookie('accessToken', accessToken, { 
+      httpOnly: true, 
+      secure: process.env.NODE_ENV === 'production', 
+      sameSite: 'lax',
+    });
+    
+    res.cookie('refreshToken', refreshToken, { 
+      httpOnly: true, 
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+    });
+    res.status(200).json({ 
+      message: "User logged in successfully!", 
+      token: accessToken,
+      user: { id: user.id, username: user.username } 
+    });
     console.log("LOGIN SUCCESS!");
   } catch (error) {
     res.status(500).json({ message: "ERROR OCCURED: ", error: error.message });
@@ -66,5 +94,69 @@ export const getUserDetails = async (req, res) => {
     }
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch user details' });
+  }
+};
+
+export const logoutUser = async (req, res) => {
+  try {
+    console.log('User ID:', req.user.id);
+    const userId = req.user.id;
+
+    await User.updateRefreshToken(userId, null);
+
+    res.clearCookie('accessToken', { httpOnly: true, secure: true });
+    res.clearCookie('refreshToken', { httpOnly: true, secure: true });
+
+    res.status(200).json({ message: 'USER LOGGED OUT SUCCESSFULLY' });
+  } catch (error) {
+    console.error('Logout Error:', error); 
+    res.status(500).json({ error: 'Failed to log out', details: error.message });
+  }
+};
+
+export const refreshAccessToken = async (req, res) => {
+  try {
+    const refreshToken = req.cookies.refreshToken;
+
+    if (!refreshToken) {
+      return res.status(401).json({ error: 'No refresh token provided' });
+    }
+
+    const user = await User.findByRefreshToken(refreshToken);
+    if (!user) {
+      return res.status(403).json({ error: 'Invalid refresh token' });
+    }
+
+    jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET, (err, decoded) => {
+      if (err) {
+        return res.status(403).json({ error: 'Invalid or expired refresh token' });
+      }
+
+      const accessToken = jwt.sign(
+        { _id: user.id, username: user.username },
+        process.env.ACCESS_TOKEN_SECRET,
+        { expiresIn: process.env.ACCESS_TOKEN_EXPIRY }
+      );
+
+      res.cookie('accessToken', accessToken, { httpOnly: true, secure: true });
+      res.status(200).json({ message: 'Access token refreshed', accessToken });
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to refresh access token', details: error.message });
+  }
+};
+
+export const searchUsersByUsername = async (req, res) => {
+  try {
+    const { query } = req.query;
+    
+    if (!query) {
+      return res.status(400).json({ message: 'Search query is required' });
+    }
+
+    const users = await User.searchByUsername(query); 
+    res.status(200).json({ users });
+  } catch (error) {
+    res.status(500).json({ message: 'Error searching users', error: error.message });
   }
 };
