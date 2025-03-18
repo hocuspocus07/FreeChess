@@ -32,6 +32,34 @@ class Game{
       static async endGame(id) {
         await pool.query('UPDATE games SET end_time = CURRENT_TIMESTAMP WHERE id = ?', [id]);
       }
+
+      static async findByUserId(userId) {
+              try {
+                  const [rows] = await pool.query(
+                      'SELECT * FROM games WHERE player1_id = ? OR player2_id = ?',
+                      [userId, userId]
+                  );
+                  return rows;
+              } catch (error) {
+                  console.error('Error in findByUserId:', error);
+                  throw error;
+              }
+          }
+
+          static async updateRefreshToken(userId, refreshToken) {
+            await pool.query(
+              'UPDATE users SET refreshToken = ? WHERE id = ?',
+              [refreshToken, userId]
+            );
+          }
+        
+          static async findByRefreshToken(refreshToken) {
+            const [rows] = await pool.query(
+              'SELECT * FROM users WHERE refreshToken = ?',
+              [refreshToken]
+            );
+            return rows[0];
+          }
 }
 
 export default Game;

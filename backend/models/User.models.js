@@ -32,6 +32,27 @@ class User{
       static async isPasswordCorrect(inputPassword, hashedPassword) {
         return await bcrypt.compare(inputPassword, hashedPassword);
       }
+      static async findUsernameById(userId) {
+        const [rows] = await pool.query(
+          'SELECT username FROM users WHERE id = ?',
+          [userId]
+        );
+        return rows[0]?.username;
+      }
+      static async updateRefreshToken(userId, refreshToken) {
+        await pool.query(
+          'UPDATE users SET refreshToken = ? WHERE id = ?',
+          [refreshToken, userId]
+        );
+      }
+
+      static async searchByUsername(query) {
+        const [rows] = await pool.query(
+          'SELECT id, username, email FROM users WHERE username LIKE ?',
+          [`%${query}%`] // Partial match
+        );
+        return rows;
+      }
 }
 
 export default User;
