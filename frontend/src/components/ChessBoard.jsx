@@ -9,9 +9,11 @@ const ChessBoard = () => {
   const [currentMoveIndex, setCurrentMoveIndex] = useState(-1);
   const [whiteTime, setWhiteTime] = useState(600);
   const [blackTime, setBlackTime] = useState(600);
-  const [activePlayer, setActivePlayer] = useState('white');
+  const [activePlayer, setActivePlayer] = useState('w');
   const timerRef = useRef(null);
   const [gameOver, setGameOver] = useState(false);
+  const [capturedPieces, setCapturedPieces] = useState({ white: [], black: [] });
+  const [materialAdvantage, setMaterialAdvantage] = useState(0);
 
   useEffect(() => {
     if (!gameOver) {
@@ -23,7 +25,7 @@ const ChessBoard = () => {
   const startTimer = () => {
     clearInterval(timerRef.current);
     timerRef.current = setInterval(() => {
-      if (activePlayer === 'white') {
+      if (activePlayer === 'w') {
         setWhiteTime((prevTime) => (prevTime > 0 ? prevTime - 1 : 0));
       } else {
         setBlackTime((prevTime) => (prevTime > 0 ? prevTime - 1 : 0));
@@ -36,7 +38,7 @@ const ChessBoard = () => {
       setGameOver(true);
       clearInterval(timerRef.current);
       if (gameCopy.isCheckmate()) {
-        alert(`Checkmate! ${activePlayer === 'white' ? 'Black' : 'White'} wins!`);
+        alert(`Checkmate! ${activePlayer === 'w' ? 'Black' : 'White'} wins!`);
       } else if (gameCopy.isStalemate()) {
         alert('Stalemate! The game is a draw.');
       } else if (gameCopy.isDraw()) {
@@ -46,7 +48,13 @@ const ChessBoard = () => {
   };
 
   const onDrop = (sourceSquare, targetSquare) => {
-    if (currentMoveIndex !== moveLog.length - 1) return false;
+    console.log("Attempting to move from:", sourceSquare, "to:", targetSquare);
+
+    const piece = game.get(sourceSquare);
+    if (!piece || piece.color !== activePlayer || currentMoveIndex !== moveLog.length - 1) {
+      return false; 
+    }
+
 
     const gameCopy = new Chess(game.fen());
 
@@ -56,7 +64,29 @@ const ChessBoard = () => {
       promotion: 'q',
     });
 
-    if (move === null) return false;
+    if (move === null) {
+      console.log("Invalid move: Move is null.");
+      return false;
+    }
+
+    console.log("Move successful:", move.san);
+
+    if (move.captured) {
+      const capturedPiece = move.captured;
+      const updatedCapturedPieces = { ...capturedPieces };
+
+      if (piece.color === 'w') {
+        updatedCapturedPieces.white.push(capturedPiece);
+      } else {
+        updatedCapturedPieces.black.push(capturedPiece);
+      }
+
+      setCapturedPieces(updatedCapturedPieces);
+
+      const pieceValue = getPieceValue(capturedPiece);
+      const advantageChange = piece.color === 'w' ? pieceValue : -pieceValue;
+      setMaterialAdvantage((prevAdvantage) => prevAdvantage + advantageChange);
+    }
 
     const newMoveLog = [...moveLog, move.san];
     setMoveLog(newMoveLog);
@@ -64,12 +94,32 @@ const ChessBoard = () => {
 
     setGame(gameCopy);
     checkGameOver(gameCopy);
+
     if (!gameOver) {
-      setActivePlayer((prevPlayer) => (prevPlayer === 'white' ? 'black' : 'white'));
+      setActivePlayer((prevPlayer) => (prevPlayer === 'w' ? 'b' : 'w'));
     }
+
     return true;
   };
 
+  const pieceIcons = {
+    p: '♟',
+    n: '♞',
+    b: '♝',
+    r: '♜',
+    q: '♛',
+  };
+
+  const getPieceValue = (piece) => {
+    switch (piece) {
+      case 'p': return 1;
+      case 'n': return 3;
+      case 'b': return 3;
+      case 'r': return 5;
+      case 'q': return 9;
+      default: return 0;
+    }
+  };
   const goToPreviousMove = () => {
     if (currentMoveIndex >= 0) {
       setCurrentMoveIndex(currentMoveIndex - 1);
@@ -120,15 +170,30 @@ const ChessBoard = () => {
               src="user.png"
               alt="Player 1"
               className="w-12 h-12 bg-white mr-3"
-            />
+            /><div className='flex flex-col'>
+            <div className='flex'>
             <h2 className="text-xl font-bold">Player 1</h2>
-            <p className="text-gray-400 text-xs ml-1">(1500)</p>
+            <p className="text-gray-400 text-xs">(1600)</p></div>
+            <div className="flex items-center">
+            <div className="flex flex-wrap">
+              {capturedPieces.black.map((piece, index) => (
+                <span key={index} className="text-white text-xl mr-0.5">
+                  {pieceIcons[piece]}
+                </span>
+              ))}
+            </div>
+              {materialAdvantage < 0 && (
+              <span className="text-green-500 text-sm ml-1">
+                +{-materialAdvantage}
+              </span>
+            )}
+            </div>
+          </div>
             <div className='right-0 absolute h-8 w-20 flex justify-center items-center bg-gray-200 text-black rounded-md'>
               <ClockIcon className='h-5 w-5' />
               <span className='ml-2'>{formatTime(blackTime)}</span>
             </div>
           </div>
-
           {/* moves logger for mobile phones */}
           <div className='h-6 w-screen flex bg-gray-800 text-white overflow-x-scroll md:hidden'>
             {formatMoveLog().map((movePair, pairIndex) => {
@@ -160,8 +225,8 @@ const ChessBoard = () => {
           <div className="sm:h-96 sm:w-96 lg:w-96 lg:h-96 md:w-96 md:h-96 h-auto w-screen">
             <Chessboard
               position={game.fen()}
-              onPieceDrop={currentMoveIndex === moveLog.length - 1 ? onDrop : undefined}
-              arePiecesDraggable={currentMoveIndex === moveLog.length - 1}
+              onPieceDrop={onDrop}
+              arePiecesDraggable={!gameOver && currentMoveIndex === moveLog.length - 1}
             />
           </div>
 
@@ -171,8 +236,25 @@ const ChessBoard = () => {
               alt="Player 2"
               className="w-12 h-12 bg-white mr-3"
             />
-            <h2 className="text-xl font-bold">Player 2</h2>
-            <p className="text-gray-400 text-xs ml-1">(1600)</p>
+            <div className='flex flex-col'>
+              <div className='flex'>
+              <h2 className="text-xl font-bold">Player 2</h2>
+              <p className="text-gray-400 text-xs">(1600)</p></div>
+              <div className="flex items-center">
+                <div className="flex flex-wrap">
+                  {capturedPieces.white.map((piece, index) => (
+                    <span key={index} className="text-black text-xl mr-0.5">
+                      {pieceIcons[piece]}
+                    </span>
+                  ))}
+                </div>
+                {materialAdvantage > 0 && (
+                  <span className="text-green-500 text-sm ml-1">
+                    +{materialAdvantage}
+                  </span>
+                )}
+              </div>
+            </div>
             <div className='right-0 absolute h-8 w-20 flex justify-center items-center bg-gray-200 text-black rounded-md'>
               <ClockIcon className='h-5 w-5' />
               <span className='ml-2'>{formatTime(whiteTime)}</span>
@@ -180,7 +262,7 @@ const ChessBoard = () => {
           </div>
         </div>
         <div className='flex flex-col w-1/4 h-full'>
-          <div className="bg-gray-900 rounded-lg p-6 sm:flex flex-col text-white h-full">
+          <div className="bg-gray-900 rounded-lg p-6 sm:flex hidden flex-col text-white h-full">
             <h3 className="text-lg font-bold mb-4">Move Log</h3>
             <div className="overflow-y-auto h-96 p-2 rounded scrollbar-custom">
               {formatMoveLog().map((movePair, pairIndex) => {
@@ -196,7 +278,7 @@ const ChessBoard = () => {
                         return (
                           <div
                             key={`${pairIndex}-${moveOffset}`}
-                            onClick={() => checkOutMove(moveIndex)} 
+                            onClick={() => checkOutMove(moveIndex)}
                             className={`bg-[#3a3a3a] rounded mx-1 px-1 cursor-pointer ${currentMoveIndex === moveIndex ? "border-2 border-yellow-400" : ""
                               }`}
                           >

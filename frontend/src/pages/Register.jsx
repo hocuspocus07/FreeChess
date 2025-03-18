@@ -1,6 +1,23 @@
 import NavBar from "../components/NavBar";
-
+import { useNavigate } from "react-router-dom";
+import { registerUser } from "../api.js";
+import { useState } from "react";
 export default function Register() {
+    const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const navigate = useNavigate();
+  const handleRegister = async (e) => {
+      e.preventDefault();
+      try {
+        const response = await registerUser({ username, email, password });
+        console.log(response.data);
+        navigate('/login'); 
+      } catch (err) {
+        setError(err.response?.data?.message || 'Something went wrong');
+      }
+    };
     return (
       <div className="hero-bg w-screen h-screen overflow-hidden">
             <NavBar />
@@ -16,7 +33,7 @@ export default function Register() {
         </h2>
         <p className="mt-2 text-center text-sm leading-5 text-gray-500 max-w">
             Or &nbsp;
-            <a href="#"
+            <a href="/login"
                 className="font-medium text-blue-600 hover:text-blue-500 focus:outline-none focus:underline transition ease-in-out duration-150">
                 login to your account
             </a>
@@ -25,13 +42,14 @@ export default function Register() {
 
     <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className=" py-8 px-4 shadow sm:rounded-lg sm:px-10">
-            <form method="POST" action="#">
+            <form onSubmit={handleRegister}>
                 
 
                 <div className="mt-6">
                     <label htmlFor="username" className="block text-sm font-medium leading-5 text-white">Username</label>
                     <div className="mt-1 flex rounded-md shadow-sm">
-                        <input id="username" name="username" placeholder="john" type="text" required=""
+                        <input id="username" value={username}
+        onChange={(e) => setUsername(e.target.value)} name="username" placeholder="john" type="text" required=""
                             className="flex-1  border border-gray-300 form-input pl-3 block w-full rounded-md transition duration-150 ease-in-out sm:text-sm sm:leading-5 h-10"/>
                     </div>
                 </div>
@@ -41,7 +59,8 @@ export default function Register() {
                         Email address
                     </label>
                     <div className="mt-1 relative rounded-md shadow-sm">
-                        <input id="email" name="email" placeholder="user@example.com" type="email"
+                        <input id="email" value={email}
+        onChange={(e) => setEmail(e.target.value)} name="email" placeholder="user@example.com" type="email"
                             required=""
                             className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:shadow-outline-blue focus:border-blue-300 transition duration-150 ease-in-out sm:text-sm sm:leading-5"/>
                     </div>
@@ -52,7 +71,8 @@ export default function Register() {
                         Password
                     </label>
                     <div className="mt-1 rounded-md shadow-sm">
-                        <input id="password" name="password" type="password" required=""
+                        <input id="password" value={password}
+        onChange={(e) => setPassword(e.target.value)} name="password" type="password" required=""
                             className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:shadow-outline-blue focus:border-blue-300 transition duration-150 ease-in-out sm:text-sm sm:leading-5"/>
                     </div>
                 </div>

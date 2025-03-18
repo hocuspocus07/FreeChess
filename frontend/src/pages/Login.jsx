@@ -1,6 +1,30 @@
 import NavBar from "../components/NavBar.jsx";
+import { useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { loginUser } from "../api.js";
 
 export default function Login() {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const navigate = useNavigate();
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    try {
+      const response = await loginUser({ username, password });
+      console.log(response);
+      const { token, user } = response; 
+      console.log(response);
+console.log(token);
+      localStorage.setItem('token', token);
+
+      navigate('/user-info');
+    } catch (err) {
+      setError(err.message || 'Invalid login credentials');
+    }
+  };
+
   return (
     <div className="hero-bg w-screen h-screen overflow-hidden">
       <NavBar />
@@ -27,7 +51,7 @@ export default function Login() {
 
         <div className="sm:mx-auto sm:w-full sm:max-w-md">
           <div className="bg-transparent py-8 px-4 shadow sm:rounded-lg sm:px-10">
-            <form method="POST" action="#">
+            <form onSubmit={handleLogin}>
               <div className="mt-6">
                 <label
                   htmlFor="username"
@@ -40,6 +64,8 @@ export default function Login() {
                     id="username"
                     name="username"
                     placeholder="Your username"
+                    value={username}
+        onChange={(e) => setUsername(e.target.value)}
                     type="text"
                     required
                     className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:shadow-outline-blue focus:border-blue-300 transition duration-150 ease-in-out sm:text-sm sm:leading-5"
@@ -58,6 +84,8 @@ export default function Login() {
                   <input
                     id="password"
                     name="password"
+                    value={password}
+          onChange={(e) => setPassword(e.target.value)}
                     type="password"
                     required
                     className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:shadow-outline-blue focus:border-blue-300 transition duration-150 ease-in-out sm:text-sm sm:leading-5"
