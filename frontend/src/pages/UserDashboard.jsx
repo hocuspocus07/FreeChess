@@ -4,6 +4,7 @@ import { addCircleOutline, flashOutline, locateOutline, playForwardCircleOutline
 import { IonIcon } from '@ionic/react'; 
 import { getAllGamesByUser, getGameDetails, getUserDetails } from '../api.js';
 import {jwtDecode} from 'jwt-decode'
+import { useNavigate } from 'react-router-dom';
 
 const getUserIdFromToken = () => {
   const token = localStorage.getItem('token');
@@ -43,6 +44,7 @@ export default function UserDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const userId = getUserIdFromToken();
+  const navigate=useNavigate();
 
   useEffect(() => {
     if (!userId) {
@@ -83,6 +85,10 @@ export default function UserDashboard() {
     const wins = recentMatches.filter((match) => match.result === 'Win').length;
     const ratio = ((wins / recentMatches.length) * 100).toFixed(0);
     return `${ratio}% Wins`;
+  };
+
+  const handleMatchClick = (gameId) => {
+    navigate(`/game/${gameId}`);
   };
 
   if (loading) {
@@ -143,7 +149,7 @@ export default function UserDashboard() {
               </thead>
               <tbody>
                 {recentMatches.map((match, index) => (
-                  <tr key={index} className="border-b border-gray-700 hover:bg-[#3a3a3a] transition-colors duration-200">
+                  <tr key={index} onClick={() => handleMatchClick(match.id)} className="border-b border-gray-700 hover:bg-[#3a3a3a] transition-colors duration-200">
                     <td className="px-4 py-3 text-center">{match.opponent_username}</td>
                     <td className="px-4 py-3 text-center">
                       <span

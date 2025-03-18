@@ -94,3 +94,18 @@ export const getGamesByUser = async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch games', details: error.message });
   }
 };
+
+// controllers/Game.controller.js
+export const endGame = async (req, res) => {
+  const { gameId } = req.params;
+  const { winnerId, status } = req.body;
+
+  try {
+    await Game.setWinner(gameId, winnerId);
+    await Game.updateStatus(gameId, status);
+    await Game.endGame(gameId);
+    res.status(200).json({ message: 'Game ended successfully' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to end game', details: error.message });
+  }
+};

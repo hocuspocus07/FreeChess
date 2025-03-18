@@ -2,8 +2,10 @@ import { Chessboard } from 'react-chessboard';
 import { Chess } from 'chess.js';
 import React, { useRef, useState, useEffect } from 'react';
 import { BackwardIcon, ClockIcon, ForwardIcon } from '@heroicons/react/24/outline';
+import { useParams } from 'react-router-dom';
 
 const ChessBoard = () => {
+  const gameId=useParams();
   const [game, setGame] = useState(new Chess());
   const [moveLog, setMoveLog] = useState([]);
   const [currentMoveIndex, setCurrentMoveIndex] = useState(-1);
@@ -14,7 +16,60 @@ const ChessBoard = () => {
   const [gameOver, setGameOver] = useState(false);
   const [capturedPieces, setCapturedPieces] = useState({ white: [], black: [] });
   const [materialAdvantage, setMaterialAdvantage] = useState(0);
+  const [isViewOnly,setIsViewOnly]=useState(true);
+  const userId=localStorage.getItem('userId');
+  
+  useEffect(() => {
+    const fetchGameDetails = async () => {
+      try {
+        const gameResponse = await fetch(`http://localhost:8000/chess/game/${gameId}`);
+        if (!gameResponse.ok) throw new Error('Failed to fetch game details');
+        const gameData = await gameResponse.json();
 
+        const isGameOver=gameData.status!=='ongoing';
+
+        const isParticipant = userId === gameData.player1_id || userId === gameData.player2_id;
+
+        setIsViewOnly(isGameOver || !isParticipant);
+
+        const movesResponse = await fetch(`http://localhost:8000/chess/game/${gameId}/moves`);
+        if (!movesResponse.ok) throw new Error('Failed to fetch move history');
+        const movesData = await movesResponse.json();
+        setMoveLog(movesData.moves || []);
+
+        // Replay all moves to set the current game state
+        const gameCopy = new Chess();
+        movesData.moves.forEach((move) => gameCopy.move(move));
+        setGame(gameCopy);
+        setCurrentMoveIndex(movesData.moves.length - 1);
+      } catch (error) {
+        console.error('Error fetching move history:', error);
+      }
+    };
+    fetchGameDetails();
+  }, [gameId,userId]);
+
+  const logMove = async (move) => {
+    if (isViewOnly) return; // Disable move logging in view-only mode
+
+    try {
+      const response = await fetch(`http://localhost:8000/chess/game/${gameId}/moves`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: JSON.stringify({
+          playerId: activePlayer === 'w' ? game.player1_id : game.player2_id,
+          moveNumber: moveLog.length + 1,
+          move: move.san,
+        }),
+      });
+      if (!response.ok) throw new Error('Failed to log move');
+    } catch (error) {
+      console.error('Error logging move:', error);
+    }
+  };
   useEffect(() => {
     if (!gameOver) {
       startTimer();
@@ -23,15 +78,59 @@ const ChessBoard = () => {
   }, [activePlayer, gameOver]);
 
   const startTimer = () => {
-    clearInterval(timerRef.current);
-    timerRef.current = setInterval(() => {
-      if (activePlayer === 'w') {
-        setWhiteTime((prevTime) => (prevTime > 0 ? prevTime - 1 : 0));
-      } else {
-        setBlackTime((prevTime) => (prevTime > 0 ? prevTime - 1 : 0));
-      }
-    }, 1000);
-  };
+  clearInterval(timerRef.current);
+  timerRef.current = setInterval(() => {
+    if (activePlayer === 'w') {
+      setWhiteTime((prevTime) => {
+        if (prevTime <= 0) {
+          clearInterval(timerRef.current);
+          handleTimerExpired('b'); // Black wins
+          return 0;
+        }
+        return prevTime - 1;
+      });
+    } else {
+      setBlackTime((prevTime) => {
+        if (prevTime <= 0) {
+          clearInterval(timerRef.current);
+          handleTimerExpired('w'); // White wins
+          return 0;
+        }
+        return prevTime - 1;
+      });
+    }
+  }, 1000);
+};
+
+const handleTimerExpired = async (winnerColor) => {
+  setGameOver(true);
+  clearInterval(timerRef.current);
+
+  // Determine the winner's ID based on the color
+  const winnerId = winnerColor === 'w' ? game.player1_id : game.player2_id;
+
+  // Update the game status in the backend
+  try {
+    const response = await fetch(`http://localhost:8000/chess/game/${gameId}/end`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${localStorage.getItem('token')}`,
+      },
+      body: JSON.stringify({
+        winnerId,
+        status: 'completed',
+      }),
+    });
+
+    if (!response.ok) throw new Error('Failed to update game status');
+  } catch (error) {
+    console.error('Error updating game status:', error);
+  }
+
+  // Notify the user
+  alert(`Time's up! ${winnerColor === 'w' ? 'White' : 'Black'} wins!`);
+};
 
   const checkGameOver = (gameCopy) => {
     if (gameCopy.isGameOver()) {
@@ -48,6 +147,7 @@ const ChessBoard = () => {
   };
 
   const onDrop = (sourceSquare, targetSquare) => {
+    if (isViewOnly) return false;
     console.log("Attempting to move from:", sourceSquare, "to:", targetSquare);
 
     const piece = game.get(sourceSquare);
@@ -68,6 +168,7 @@ const ChessBoard = () => {
       console.log("Invalid move: Move is null.");
       return false;
     }
+    logMove(move);
 
     console.log("Move successful:", move.san);
 
@@ -226,7 +327,7 @@ const ChessBoard = () => {
             <Chessboard
               position={game.fen()}
               onPieceDrop={onDrop}
-              arePiecesDraggable={!gameOver && currentMoveIndex === moveLog.length - 1}
+              arePiecesDraggable={!isViewOnly && !gameOver && currentMoveIndex === moveLog.length - 1}
             />
           </div>
 

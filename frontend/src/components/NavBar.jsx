@@ -2,11 +2,11 @@ import { Disclosure, DisclosureButton, DisclosurePanel, Menu, MenuButton, MenuIt
 import { Bars3Icon, BellIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import Search from './Search.jsx';
 import { logoutUser } from '../api.js';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate,useLocation } from 'react-router-dom';
 import { useEffect, useState } from 'react'; 
 
-const navigation = [
-  { name: 'Home', href: '/', current: true },
+const navigationList = [
+  { name: 'Home', href: '/', current: false },
   { name: 'How To Play', href: '/how-to', current: false },
   { name: 'Register', href: '/register', current: false },
   { name: 'Login', href: '/login', current: false },
@@ -18,7 +18,17 @@ function classNames(...classes) {
 
 export default function NavBar() {
   const navigate = useNavigate();
+  const location=useLocation();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [navigation,setNavigation]=useState(navigationList);
+
+  useEffect(() => {
+    const updatedNavigation = navigationList.map((item) => ({
+      ...item,
+      current: item.href === location.pathname,
+    }));
+    setNavigation(updatedNavigation);
+  }, [location.pathname]);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -31,11 +41,16 @@ export default function NavBar() {
     try {
       await logoutUser();
       localStorage.removeItem('token');
+      localStorage.removeItem('userId');
       setIsLoggedIn(false);
       navigate('/login'); 
     } catch (error) {
       console.error('Logout failed:', error);
     }
+  };
+
+  const handleNavigationClick = (href) => {
+    navigate(href); 
   };
 
   return (

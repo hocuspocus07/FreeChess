@@ -13,7 +13,12 @@ export const registerUser = async (userData) => {
 export const loginUser = async (userData) => {
   try {
     const response = await axios.post(`${API_BASE_URL}/chess/users/login`, userData);
-    return response.data;
+    if (response.data && response.data.token && response.data.user) {
+      localStorage.setItem('token', response.data.token); 
+      localStorage.setItem('userId', response.data.user.id);
+    }
+
+    return response.data; 
   } catch (error) {
     throw error.response.data;
   }

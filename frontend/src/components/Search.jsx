@@ -1,11 +1,14 @@
 import { useState } from 'react';
 import React from 'react'
 import PopUp from './PopUp.jsx';
+import UserProfile from '../pages/UserProfile.jsx';
+import { useNavigate } from 'react-router-dom';
 
 function Search() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [isPopUpOpen, setIsPopUpOpen] = useState(false);
+  const navigate=useNavigate();
 
   const handleSearch = async (e) => {
     e.preventDefault(); 
@@ -26,6 +29,10 @@ function Search() {
       setIsPopUpOpen(true); 
     }
   };
+  const handleUserClick = (userId) => {
+    navigate(`/user/${userId}`);
+    setIsPopUpOpen(false); // Close the popup
+  };
   return (
     <>
 <form className="max-w-md mx-auto" onSubmit={handleSearch}>   
@@ -42,8 +49,12 @@ function Search() {
     </div>
 </form>
 {isPopUpOpen && (
-  <PopUp searchResults={searchResults} onClose={() => setIsPopUpOpen(false)} />
-)}
+        <PopUp
+          searchResults={searchResults}
+          onClose={() => setIsPopUpOpen(false)}
+          onUserClick={handleUserClick} // Pass the click handler to PopUp
+        />
+      )}
 </>
   )
 }

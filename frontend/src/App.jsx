@@ -5,8 +5,9 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Register from './pages/Register.jsx';
 import Login from './pages/Login.jsx';
 import UserDashboard from './pages/UserDashboard.jsx';
-import PopUp from './components/PopUp.jsx';
 import GamePage from './pages/GamePage.jsx';
+import UserProfile from './pages/UserProfile.jsx';
+import HowToPlay from './pages/HowToPlay.jsx';
 
 function App() {
 
@@ -18,8 +19,10 @@ function App() {
         <Route path="/register" element={<Register/>} />
         <Route path="/login" element={<Login/>} />
         <Route path='/user-info' element={<UserDashboard/>}/>
-        <Route path='/how-to' element={<PopUp/>}/>
+        <Route path='/how-to' element={<HowToPlay/>}/>
         <Route path='/game' element={<GamePage/>}/>
+        <Route path="/user/:userId" element={<UserProfile />} />
+        <Route path="/game/:gameId" element={<GamePage />} />
       </Routes>
     </Router>
     </>
