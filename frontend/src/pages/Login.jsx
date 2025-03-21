@@ -18,7 +18,7 @@ export default function Login() {
       console.log(response);
 console.log(token);
       localStorage.setItem('token', token);
-
+      localStorage.setItem('userId', user.id);
       navigate('/user-info');
     } catch (err) {
       setError(err.message || 'Invalid login credentials');

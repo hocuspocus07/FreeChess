@@ -2,9 +2,10 @@ import React,{useState,useEffect} from 'react';
 import NavBar from '../components/NavBar';
 import { addCircleOutline, flashOutline, locateOutline, playForwardCircleOutline, removeCircleOutline, reorderTwoOutline, } from 'ionicons/icons';
 import { IonIcon } from '@ionic/react'; 
-import { getAllGamesByUser, getGameDetails, getUserDetails } from '../api.js';
+import { getAllGamesByUser, getGameDetails, getUserDetails,getMoves } from '../api.js';
 import {jwtDecode} from 'jwt-decode'
 import { useNavigate } from 'react-router-dom';
+import { Chess } from 'chess.js';
 
 const getUserIdFromToken = () => {
   const token = localStorage.getItem('token');
@@ -43,6 +44,11 @@ export default function UserDashboard() {
   const [recentMatches, setRecentMatches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [selectedGame, setSelectedGame] = useState(null); 
+  const [moves, setMoves] = useState([]); 
+  const [currentMoveIndex, setCurrentMoveIndex] = useState(-1); 
+  const [game, setGame] = useState(new Chess()); 
+  const [selectedTimeControl, setSelectedTimeControl] = useState(null);
   const userId = getUserIdFromToken();
   const navigate=useNavigate();
 
@@ -80,6 +86,28 @@ export default function UserDashboard() {
     }
   };
 
+  const handleTimeControlClick = (timeControl) => {
+    setSelectedTimeControl(timeControl); 
+  };
+
+  const handleSeeAllGames = () => {
+    setSelectedTimeControl(null); // Reset the filter
+  };
+
+  const getTimeControl = (match) => {
+    const startTime = new Date(match.start_time).getTime();
+    const endTime = new Date(match.end_time).getTime();
+    const durationInSeconds = (endTime - startTime) / 1000;
+
+    if (durationInSeconds < 180) return 'bullet';
+    if (durationInSeconds >= 180 && durationInSeconds <= 600) return 'blitz';
+    return 'rapid';
+  };
+
+  const filteredMatches = selectedTimeControl
+    ? recentMatches.filter((match) => getTimeControl(match) === selectedTimeControl)
+    : recentMatches;
+
   const calculateWinLossRatio = () => {
     if (!recentMatches.length) return '0% Wins';
     const wins = recentMatches.filter((match) => match.result === 'Win').length;
@@ -87,8 +115,18 @@ export default function UserDashboard() {
     return `${ratio}% Wins`;
   };
 
-  const handleMatchClick = (gameId) => {
-    navigate(`/game/${gameId}`);
+  const handleMatchClick = async (gameId) => {
+    try {
+      const movesResponse = await getMoves(gameId);
+      setMoves(movesResponse);
+      setCurrentMoveIndex(-1); // Reset move index
+      setGame(new Chess()); // Reset the chess game
+      setSelectedGame(gameId); // Set the selected game
+      navigate(`/replay/${gameId}`);
+    } catch (error) {
+      console.error('Failed to fetch moves:', error);
+      setError('Failed to fetch moves for the selected game.');
+    }
   };
 
   if (loading) {
@@ -113,6 +151,36 @@ export default function UserDashboard() {
           <h1 className="text-3xl font-extrabold mb-2">Welcome, {user.username}</h1>
           <p className="text-gray-400">Joined on {new Date(user.created_at).toLocaleDateString()}</p>
         </div>
+
+        <div className="flex max-w-4xl h-40 bg-[#1a1a1a] p-4">
+          {timeControlType.map((control, index) => {
+            const timeControl = Object.keys(control)[0];
+            const icon = control[timeControl];
+            const color = control.color;
+
+            return (
+              <div
+                key={index}
+                onClick={() => handleTimeControlClick(timeControl)}
+                className={`flex-1 flex flex-col items-center justify-center ${color} rounded-lg m-2 shadow-lg hover:brightness-90 transition-all duration-300 cursor-pointer`}
+              >
+                <div className="text-4xl mb-2 text-white">{icon}</div>
+                <div className="text-xl font-bold capitalize text-white">{timeControl}</div>
+              </div>
+            );
+          })}
+        </div>
+
+        {selectedTimeControl && (
+          <div className="flex justify-center mt-4">
+            <button
+              onClick={handleSeeAllGames}
+              className="bg-[#7fa650] text-white px-4 py-2 rounded-lg hover:bg-[#8cf906] transition-all duration-300"
+            >
+              See All Games
+            </button>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-6 mx-auto">
   {user.rating && Object.entries(user.rating).map(([timeControl, rating]) => {
@@ -143,41 +211,47 @@ export default function UserDashboard() {
                 <tr className="border-b border-gray-700">
                   <th className="px-4 py-3 text-center text-gray-400">Opponent</th>
                   <th className="px-4 py-3 text-center text-gray-400">Result</th>
-                  <th className="px-4 py-3 text-center text-gray-400">Date</th>
                   <th className="px-4 py-3 text-center text-gray-400">Time Control</th>
                 </tr>
               </thead>
               <tbody>
-                {recentMatches.map((match, index) => (
-                  <tr key={index} onClick={() => handleMatchClick(match.id)} className="border-b border-gray-700 hover:bg-[#3a3a3a] transition-colors duration-200">
-                    <td className="px-4 py-3 text-center">{match.opponent_username}</td>
-                    <td className="px-4 py-3 text-center">
-                      <span
-                        className={`px-3 py-1 rounded-full text-xl font-extrabold ${
-                          match.result === 'Win'
-                            ? 'bg-[#7fa650] text-white'
-                            : match.result === 'Loss'
-                            ? 'bg-[#dc3545] text-white'
-                            : 'bg-[#ffc107] text-black'
-                        }`}
-                      >
-                        {resultList[match.result]}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-center text-gray-400">
-                      {new Date(match.start_time).toLocaleDateString()}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <span
-                        className={`px-3 py-1 text-xl font-extrabold rounded-full ${
-                          timeControlType.find((item) => item[match.timeControl])?.color
-                        }`}
-                      >
-                        {timeControlType.find((item) => item[match.timeControl])?.[match.timeControl]}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
+                {filteredMatches.map((match, index) => {
+                  const result = match.winner_id === userId ? 'Win' : match.winner_id === -1 ? 'Draw' : 'Loss';
+                  const timeControl = getTimeControl(match);
+                  const timeControlData = timeControlType.find((item) => item[timeControl]);
+                  const timeControlIcon = timeControlData ? timeControlData[timeControl] : null;
+                  const timeControlColor = timeControlData ? timeControlData.color : 'bg-gray-500';
+
+                  return (
+                    <tr
+                      key={index}
+                      onClick={() => handleMatchClick(match.id)}
+                      className="border-b border-gray-700 hover:bg-[#3a3a3a] transition-colors duration-200"
+                    >
+                      <td className="px-4 py-3 text-center">{match.opponent_username}</td>
+                      <td className="px-4 py-3 text-center">
+                        <span
+                          className={`px-3 py-1 rounded-full text-xl font-extrabold ${
+                            result === 'Win'
+                              ? 'bg-[#7fa650] text-white'
+                              : result === 'Loss'
+                              ? 'bg-[#dc3545] text-white'
+                              : 'bg-[#ffc107] text-black'
+                          }`}
+                        >
+                          {resultList[result]}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <span
+                          className={`px-3 py-1 text-xl font-extrabold rounded-full ${timeControlColor}`}
+                        >
+                          {timeControlIcon}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

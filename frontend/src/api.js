@@ -25,7 +25,7 @@ export const loginUser = async (userData) => {
 };
 
 export const logoutUser = async () => {
-  try {
+  const requestFunction = async () => {
     const response = await axios.post(
       `${API_BASE_URL}/chess/users/logout`,
       {},
@@ -37,8 +37,15 @@ export const logoutUser = async () => {
       }
     );
     return response.data;
+  };
+
+  try {
+    const data = await makeAuthenticatedRequest(requestFunction);
+    localStorage.removeItem('token');
+    return data;
   } catch (error) {
-    throw error.response ? error.response.data : { message: error.message };
+    console.error('Logout failed:', error);
+    throw error;
   }
 };
 
@@ -135,7 +142,7 @@ export const addMove = async (gameId, moveData) => {
 
 export const getMoves = async (gameId) => {
   try {
-    const response = await axios.get(`${API_BASE_URL}/chess/moves/${gameId}/moves`);
+    const response = await axios.get(`${API_BASE_URL}/chess/game/${gameId}/moves`);
     return response.data;
   } catch (error) {
     throw error.response.data;
@@ -166,5 +173,66 @@ export const setAuthToken = (token) => {
     axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
   } else {
     delete axios.defaults.headers.common['Authorization'];
+  }
+};
+
+export const refreshAccessToken = async () => {
+  try {
+    const response = await axios.post(
+      `${API_BASE_URL}/chess/users/refresh-token`,
+      {},
+      {
+        withCredentials: true, // Include cookies
+      }
+    );
+    return response.data.accessToken; // Return the new access token
+  } catch (error) {
+    console.error('Error refreshing access token:', error);
+    throw error;
+  }
+};
+
+export const makeAuthenticatedRequest = async (requestFunction) => {
+  try {
+    return await requestFunction(); 
+  } catch (error) {
+    if (error.response?.status === 401) {
+      try {
+        const newAccessToken = await refreshAccessToken();
+        localStorage.setItem('token', newAccessToken); // Update the token in localStorage
+        return await requestFunction(); // Retry the original request
+      } catch (refreshError) {
+        console.error('Error refreshing token:', refreshError);
+        throw refreshError;
+      }
+    } else {
+      throw error; // Re-throw other errors
+    }
+  }
+};
+
+export const saveMatch = async (result, winnerId,userId,moveLog) => {
+  try {
+    const response = await fetch('http://localhost:8000/chess/game/save-bot-match', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${localStorage.getItem('token')}`,
+      },
+      body: JSON.stringify({
+        player1_id: userId, 
+        player2_id: -1, 
+        winner_id: winnerId, 
+        status: result.includes('wins') ? 'completed' : 'draw',
+        moves: moveLog, 
+      }),
+    });
+
+    if (!response.ok) throw new Error('Failed to save match');
+
+    const data = await response.json();
+    console.log('Match saved successfully:', data);
+  } catch (error) {
+    console.error('Error saving match:', error);
   }
 };

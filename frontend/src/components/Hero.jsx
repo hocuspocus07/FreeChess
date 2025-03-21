@@ -16,7 +16,7 @@ function Hero() {
         </p>
         <div className="space-x-4">
           <Link
-            to="/signup"
+            to="/register"
             className="bg-blue-600 text-white px-8 py-3 rounded-lg text-lg hover:bg-blue-700 transition duration-300 transform hover:scale-105"
           >
             Get Started

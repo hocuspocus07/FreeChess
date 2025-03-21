@@ -8,6 +8,8 @@ import UserDashboard from './pages/UserDashboard.jsx';
 import GamePage from './pages/GamePage.jsx';
 import UserProfile from './pages/UserProfile.jsx';
 import HowToPlay from './pages/HowToPlay.jsx';
+import PlayBot from './pages/PlayBot.jsx';
+import ReplayGame from './components/ReplayGame.jsx';
 
 function App() {
 
@@ -23,6 +25,9 @@ function App() {
         <Route path='/game' element={<GamePage/>}/>
         <Route path="/user/:userId" element={<UserProfile />} />
         <Route path="/game/:gameId" element={<GamePage />} />
+        <Route path="/play-bot" element={<PlayBot />} />
+        <Route path="/game/bot" element={<GamePage />} />
+        <Route path="/replay/:gameId" element={<ReplayGame />} />
       </Routes>
     </Router>
     </>

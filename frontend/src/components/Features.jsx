@@ -32,11 +32,11 @@ export default function Features() {
                     </p>
                 </div>
 
-                <div className="flex items-center justify-center">
+                <div className="flex min-h-screen w-full items-center justify-center flex-wrap sm:flex-col-reverse flex-col">
                     {features.map((feature) => (
                         <div
                             key={feature.name}
-                            className="bg-gray-800 rounded-lg m-6 p-6 hover:bg-gray-700 transition duration-300 transform hover:scale-105 h-60 w-full md:w-1/2 lg:w-1/3 xl:w-1/4 items-center justify-center flex flex-col"
+                            className="bg-gray-800 rounded-lg my-6 p-6 hover:bg-gray-700 transition duration-300 transform hover:scale-105 h-60 w-full md:w-1/2 lg:w-1/3 xl:w-1/4 items-center justify-center flex flex-col"
                         >
                             <div className="text-4xl mb-4 text-blue-500">{feature.icon}</div>
                             <h3 className="text-xl font-bold text-white mb-2">{feature.name}</h3>

@@ -1,19 +1,27 @@
 import { pool } from "../config/db.js";
 
 class Game{
-    static async create(player1_id,player2_id){
+    static async create(player1_id,player2_id,winner_id,status){
         const [result]=await pool.query(
-            'INSERT INTO games(player1_id,player2_id) VALUES (?,?)',
-            [player1_id,player2_id]
+            'INSERT INTO games(player1_id,player2_id,winner_id,status) VALUES (?,?,?,?)',
+            [player1_id,player2_id,winner_id,status]
         );
         return result.insertId;
     }
 
-    static async updateMoves(id,moves){
-        await pool.query(
-            'UPDATE games SET moves =? WHERE id=?',[moves,id]
-        );
-    }
+    static async updateMoves(id, moves) {
+      console.log(`Updating moves for game ${id}:`, moves);
+      await pool.query(
+          "DELETE FROM moves WHERE game_id = ?", [id]
+      );
+      for (const move of moves) {
+          await pool.query(
+              "INSERT INTO moves (game_id, player_id, move_number, move) VALUES (?, ?, ?, ?)",
+              [id, move.player_id, move.move_number, move.move]
+          );
+      }
+  }
+  
     
     static async findById(id){
         const [rows]=await pool.query(

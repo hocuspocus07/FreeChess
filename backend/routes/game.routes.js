@@ -1,5 +1,5 @@
 import express,{Router} from 'express'
-import { createGame,getGameDetails,addMove,getMoves,getGamesByUser,endGame } from '../controllers/Game.controller.js'
+import { createGame,getGameDetails,addMove,getMoves,getGamesByUser,endGame,botMove, saveBotGame } from '../controllers/Game.controller.js'
 import { verifyJWT } from '../middleware/auth.middleware.js';
 
 const gameRouter=Router();
@@ -14,6 +14,10 @@ gameRouter.get('/:gameId/moves', getMoves);
 
 gameRouter.get('/user/:userId', getGamesByUser);
 
-gameRouter.post('/:gameId/end', verifyJWT, endGame);
+gameRouter.post('/:gameId/end', endGame);
+
+gameRouter.post('/bot-move',botMove);
+
+gameRouter.post('/save-bot-match',saveBotGame);
 
 export default gameRouter;

@@ -2,7 +2,7 @@ import { Disclosure, DisclosureButton, DisclosurePanel, Menu, MenuButton, MenuIt
 import { Bars3Icon, BellIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import Search from './Search.jsx';
 import { logoutUser } from '../api.js';
-import { useNavigate,useLocation } from 'react-router-dom';
+import { useNavigate,useLocation, href } from 'react-router-dom';
 import { useEffect, useState } from 'react'; 
 
 const navigationList = [
@@ -10,6 +10,7 @@ const navigationList = [
   { name: 'How To Play', href: '/how-to', current: false },
   { name: 'Register', href: '/register', current: false },
   { name: 'Login', href: '/login', current: false },
+  {name:'Play A Bot',href:'/play-bot',current:false},
 ];
 
 function classNames(...classes) {
@@ -49,10 +50,6 @@ export default function NavBar() {
     }
   };
 
-  const handleNavigationClick = (href) => {
-    navigate(href); 
-  };
-
   return (
     <Disclosure as="nav" className="bg-gray-800 sm:bg-transparent w-screen top-0 fixed z-999">
       <div className="mx-auto max-w-7xl px-2 sm:px-6 lg:px-8">
@@ -78,6 +75,8 @@ export default function NavBar() {
                 {navigation.map((item) => {
                   if (isLoggedIn && (item.name === 'Register' || item.name === 'Login')) {
                     return null;
+                  } else if (!isLoggedIn && item.name === 'Play A Bot') {
+                    return null; 
                   }
                   return (
                     <a
@@ -161,6 +160,8 @@ export default function NavBar() {
           {navigation.map((item) => {
             if (isLoggedIn && (item.name === 'Register' || item.name === 'Login')) {
               return null;
+            } else if (!isLoggedIn && item.name === 'Play A Bot') {
+              return null; 
             }
             return (
               <DisclosureButton

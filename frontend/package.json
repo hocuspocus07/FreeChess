@@ -10,9 +10,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@emotion/styled": "^11.14.0",
     "@headlessui/react": "^2.2.0",
     "@heroicons/react": "^2.2.0",
     "@ionic/react": "^8.5.0",
+    "@mui/material": "^6.4.8",
+    "@mui/styled-engine": "^6.4.8",
     "@tailwindcss/vite": "^4.0.13",
     "axios": "^1.8.3",
     "chess.js": "^1.1.0",
@@ -27,6 +30,7 @@
     "react-redux": "^9.2.0",
     "react-router-dom": "^7.3.0",
     "safe-buffer": "^5.2.1",
+    "socket.io-client": "^4.8.1",
     "stockfish": "^16.0.0",
     "tailwindcss": "^4.0.13"
   },
