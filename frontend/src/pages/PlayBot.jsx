@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Slider, Select, MenuItem, Button } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import {jwtDecode} from 'jwt-decode';
+import NavBar from '../components/NavBar.jsx';
 
 const PlayBot = () => {
   const [botRating, setBotRating] = useState(1500); 
@@ -77,14 +78,15 @@ const PlayBot = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#1a1a1a] text-white font-sans p-6">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold mb-6">Play a Bot</h1>
+    <div className="min-h-screen bg-[#1a1a1a] text-white font-sans">
+      <NavBar/>
+      <div className="max-w-4xl mx-auto p-5">
+        <h1 className="text-3xl font-bold mb-6 mt-11">Play a Bot</h1>
 
         <div className="bg-[#2c2c2c] rounded-lg p-6 mb-6 shadow-lg">
-          <h2 className="text-xl font-bold mb-4">Set Bot Rating</h2>
+          <h2 className="text-xl font-bold mb-4 text-white">Set Bot Rating</h2>
           <div className="flex items-center">
-            <span className="mr-4">Rating: {botRating}</span>
+            <span className="mr-4 text-lime-500">Rating: {botRating}</span>
             <Slider
               value={botRating}
               onChange={handleRatingChange}
@@ -103,7 +105,7 @@ const PlayBot = () => {
           <Select
             value={timeControl}
             onChange={handleTimeControlChange}
-            className="w-full bg-[#3a3a3a] text-white"
+            className="w-full bg-lime-500 text-white"
           >
             <MenuItem value={1}>1 Minute</MenuItem>
             <MenuItem value={3}>3 Minutes</MenuItem>
