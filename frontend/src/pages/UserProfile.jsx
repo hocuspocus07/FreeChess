@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams,useNavigate } from 'react-router-dom';
 import NavBar from '../components/NavBar';
+import RecentMatchesTable from '../components/RecentMatchesTable.jsx';
 
 const UserProfile = () => {
   const { userId } = useParams(); // Get userId from the URL
@@ -9,6 +10,7 @@ const UserProfile = () => {
   const [recentMatches, setRecentMatches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [selectedTimeControl, setSelectedTimeControl] = useState(null);
   const navigate=useNavigate();
 
   useEffect(() => {
@@ -42,13 +44,25 @@ const UserProfile = () => {
     fetchUserData();
   }, [userId]);
 
+  const handleTimeControlClick = (timeControl) => {
+    setSelectedTimeControl(timeControl);
+  };
+
+  const handleSeeAllGames = () => {
+    setSelectedTimeControl(null); // Reset the filter
+  };
+
   const handleChallenge = () => {
     console.log(`Challenging user: ${user.username}`);
     // Implement challenge logic here
   };
   const handleMatchClick = (gameId) => {
-    navigate(`/game/${gameId}`); // Navigate to the GameBoard page
-  };
+    try {
+      navigate(`/replay/${gameId}`);
+    } catch (error) {
+      console.error('Failed to navigate to replay page:', error);
+      setError('Failed to navigate to replay page.');
+    }  };
 
   if (loading) return <div className="text-center mt-8">Loading...</div>;
   if (error) return <div className="text-center mt-8 text-red-500">Error: {error}</div>;
@@ -56,41 +70,19 @@ const UserProfile = () => {
   return (
     <div className='min-h-screen min-w-screen bg-[#2c2c2c]'>
         <NavBar/>
-    <div className=" mx-auto shadow-lg rounded-lg mt-15 ">
-      <h2 className="text-3xl font-bold text-[#7fa650] mt-15 sm:mt-0">{user.username}</h2>
-      <p className="text-gray-600">Joined: {new Date(user.created_at).toLocaleDateString()}</p>
-
-      <h3 className="text-2xl text-white font-extrabold mt-6">Recent Matches</h3>
-      {recentMatches.length > 0 ? (
-        <ul className="mt-4 space-y-3">
-          {recentMatches.map((match, index) => (
-            <li onClick={() => handleMatchClick(match.id)} key={index} className="p-4 bg-gray-50 rounded-lg shadow-sm">
-              <p className="text-gray-700">
-                <span className="font-medium">{match.opponent_username}</span> -{' '}
-                {match.status === 'ongoing' ? 'Ongoing' : `Result: ${match.winner_id === user.id ? 'Won' : 'Lost'}`}
-              </p>
-              <p className="text-sm text-gray-500">Started: {new Date(match.start_time).toLocaleString()}</p>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <div className="flex w-screen h-auto justify-center items-center flex-col">
-    <p className="text-gray-600 text-2xl text-center mb-4">
-      Zero games played. Are they even trying?
-    </p>
-    <div className="flex justify-center items-center">
-      <img src="/point.png" className="h-10 w-10" alt="point" />
-      <img src="/cat-laugh.png" className="h-10 w-10" alt="cat laugh" />
-    </div>
-  </div>
-      )}
-
-      <button
-        onClick={handleChallenge}
-        className="mt-6 bg-[#7fa650] text-white text-xl font-bold px-6 py-2 rounded-lg hover:bg-[#7ac96e] transition-colors"
-      >
-        Challenge {user.username}
-      </button>
+        <div className="max-w-4xl mx-auto mt-9">
+        <div className="bg-[#2c2c2c] rounded-lg p-6 mb-6 shadow-lg">
+          <h1 className="text-3xl font-extrabold mb-2 text-lime-500">{user.username}</h1>
+          <p className="text-gray-400">Joined on {new Date(user.created_at).toLocaleDateString()}</p>
+        </div>
+        <RecentMatchesTable
+        matches={recentMatches} 
+        selectedTimeControl={selectedTimeControl}
+        onTimeControlClick={handleTimeControlClick} 
+        onMatchClick={handleMatchClick} 
+        onSeeAllGames={handleSeeAllGames} 
+        userId={userId} 
+      />
     </div>
     </div>
   );
