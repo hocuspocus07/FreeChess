@@ -5,6 +5,7 @@ import { BackwardIcon, ClockIcon, ForwardIcon } from '@heroicons/react/24/outlin
 import { saveMatch } from '../api.js';
 import UserInfo from './UserInfo.jsx';
 import MoveLog from './MoveLog.jsx';
+import PostGameCard from './PostGameCard.jsx';
 
 const ChessBoard = ({ isBotGame, botRating, timeControl, isViewOnly, gameId, userId, socket,player1_id,player2_id }) => {
   const [game, setGame] = useState(new Chess());
@@ -20,6 +21,8 @@ const ChessBoard = ({ isBotGame, botRating, timeControl, isViewOnly, gameId, use
   const [gameOver, setGameOver] = useState(false);
   const [capturedPieces, setCapturedPieces] = useState({ white: [], black: [] });
   const [materialAdvantage, setMaterialAdvantage] = useState(0);
+
+  const [postGameResult, setPostGameResult] = useState(null);
 
   useEffect(() => {
     if (isReplay) {
@@ -49,11 +52,12 @@ const ChessBoard = ({ isBotGame, botRating, timeControl, isViewOnly, gameId, use
   useEffect(() => {
     if (isBotGame && activePlayer === 'b' && !gameOver) {
       setIsBotThinking(true);
+      console.log(botRating);
 
       fetch('http://localhost:8000/chess/game/bot-move', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fen: game.fen(), botRating, gameId, playerId: player2_id }),
+        body: JSON.stringify({ fen: game.fen(),botRating: botRating,gameId: gameId, playerId: player2_id }),
       })
         .then(response => response.json())
         .then(data => {
@@ -164,18 +168,50 @@ let winnerId = winnerColor === 'w' ? player1_id : player2_id;
 
         let result;
         let winnerId = null;
+        let winType = '';
+
         if (gameCopy.isCheckmate()) {
-          result = activePlayer === 'w' ? 'Black wins by checkmate' : 'White wins by checkmate';
-          winnerId = activePlayer === 'w' ? -1 : userId; 
+          const checkmatedPlayer = gameCopy.turn();
+          if (checkmatedPlayer === 'w') {
+            // White is checkmated, Black wins
+            result = 'Win';
+            winnerId = player2_id; // Black wins
+          } else {
+            // Black is checkmated, White wins
+            result = 'Win';
+            winnerId = player1_id; // White wins
+          }
+          winType = 'Checkmate';
         } else if (gameCopy.isStalemate()) {
-          result = 'Stalemate';
+          result = 'Draw';
+          winType = 'Stalemate';
         } else if (gameCopy.isDraw()) {
           result = 'Draw';
+          winType = 'Draw';
         }
+
+        setPostGameResult({
+          player1: {
+            username: player1_id,
+          },
+          player2: {
+            username: player2_id, 
+          },
+          timeControl: timeControl, 
+          result: result,
+          winType: winType, 
+        });
+
         if (isBotGame) {
-          saveMatch(result, winnerId,userId,moveLog);
+          saveMatch(result, winnerId, userId, moveLog)
+            .then(() => console.log('Match saved successfully'))
+            .catch((error) => console.error('Failed to save match:', error));
         }
     }
+};
+
+const handleClosePostGameCard = () => {
+  setPostGameResult(null); 
 };
 
 
@@ -301,6 +337,9 @@ const onDrop = async (sourceSquare, targetSquare) => {
 
   return (
     <div className="flex justify-center items-center min-h-screen w-screen bg-[#2c2c2c] p-4">
+      {postGameResult && (
+        <PostGameCard gameResult={postGameResult} onClose={handleClosePostGameCard} />
+      )}
       <div className="flex flex-col h-full justify-center items-center lg:flex-row w-full gap-6">
         <div className="bg-gray-900 rounded-lg p-6 flex flex-col mt-10 lg:mt-0">
         <UserInfo

@@ -42,7 +42,7 @@ const RecentMatchesTable = ({
 
   const filteredMatches = selectedTimeControl
     ? matches.filter((match) => getTimeControl(match) === selectedTimeControl)
-    : matches;
+    : matches.sort((a, b) => new Date(b.start_time) - new Date(a.start_time));;
 
   const handleSeeMore = () => {
     setVisibleMatches(filteredMatches.length); // Show all matches
@@ -94,7 +94,12 @@ const RecentMatchesTable = ({
           </thead>
           <tbody>
             {filteredMatches.slice(0, visibleMatches).map((match, index) => {
-              const result = match.winner_id === userId ? 'Win' : match.winner_id === -1 ? 'Draw' : 'Loss';
+              const result =
+                match.status === 'draw' || match.result === 'Draw'
+                  ? 'Draw'
+                  : match.winner_id === userId
+                    ? 'Win'
+                    : 'Loss';
               const timeControl = getTimeControl(match);
               const timeControlData = timeControlType.find((item) => item[timeControl]);
               const timeControlIcon = timeControlData ? timeControlData[timeControl] : null;
@@ -109,13 +114,12 @@ const RecentMatchesTable = ({
                   <td className="px-4 py-3 text-center text-lime-500">{match.opponent_username}</td>
                   <td className="px-4 py-3 text-center">
                     <span
-                      className={`px-3 py-1 rounded-full text-xl font-extrabold ${
-                        result === 'Win'
+                      className={`px-3 py-1 rounded-full text-xl font-extrabold ${result === 'Win'
                           ? 'bg-[#7fa650] text-white'
                           : result === 'Loss'
-                          ? 'bg-[#dc3545] text-white'
-                          : 'bg-[#ffc107] text-black'
-                      }`}
+                            ? 'bg-[#dc3545] text-white'
+                            : 'bg-[#ffc107] text-black'
+                        }`}
                     >
                       {resultList[result]}
                     </span>

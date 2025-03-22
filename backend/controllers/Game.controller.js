@@ -135,7 +135,6 @@ export const getGamesByUser = async (req, res) => {
 export const endGame = async (req, res) => {
   const { gameId } = req.params;
   const { winnerId, status } = req.body;
-  console.log("we are here!");
 
   try {
     if (!winnerId) {
@@ -166,6 +165,20 @@ export const botMove = async (req, res) => {
   const { fen, botRating, gameId, playerId } = req.body; 
   console.log("🔹 Bot move requested: GameID:", gameId, "PlayerID:", playerId, "FEN:", fen);
 
+  const getDepthFromRating = (botRating) => {
+    if (botRating <= 1000) {
+      return 1; 
+    } else if (botRating <= 1500) {
+      return 5; 
+    } else if (botRating <= 2000) {
+      return 10; 
+    } else {
+      return 20; 
+    }
+  };
+
+  const depth = getDepthFromRating(botRating);
+
   if (!gameId || !playerId) {
     return res.status(400).json({ error: "Missing gameId or playerId." });
   }
@@ -178,7 +191,7 @@ export const botMove = async (req, res) => {
   stockfish.stdin.write('setoption name UCI_LimitStrength value true\n');
   stockfish.stdin.write(`setoption name UCI_Elo value ${botRating}\n`);
   stockfish.stdin.write(`position fen ${fen}\n`);
-  stockfish.stdin.write('go depth 10\n');
+  stockfish.stdin.write(`go depth ${depth}\n`);
 
   stockfish.stdout.on('data', (data) => {
     buffer += data.toString();
@@ -217,16 +230,14 @@ export const botMove = async (req, res) => {
 
 
 export const saveBotGame=async(req,res)=>{
-  const { player1_id, player2_id, winner_id, status,end_time, moves } = req.body;
+  const { player1_id, player2_id, winner_id, status, moves } = req.body;
 
   try {
-    const newGame = await Game.create({
+    const newGame = await Game.create(
       player1_id,
       player2_id,
       winner_id,
-      status,
-      end_time: new Date(), 
-    });
+      status);
     const gameId = newGame.insertId;
     for (let i = 0; i < moves.length; i++) {
       const moveNumber = i + 1;
@@ -268,7 +279,8 @@ const saveBotMove = async (gameId, playerId, move) => {
     // Convert UCI move (e.g., "g7g6") to { from, to } object
     const from = move.slice(0, 2); // First two characters (e.g., "g7")
     const to = move.slice(2, 4);   // Next two characters (e.g., "g6")
-    const moveObject = { from, to };
+    const promotion = move.length > 4 ? move[4] : undefined;
+    const moveObject = { from, to,promotion };
 
     console.log("Validating bot move:", moveObject);
     const moveResult = chess.move(moveObject);
