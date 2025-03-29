@@ -116,33 +116,60 @@ export const logoutUser = async (req, res) => {
 
 export const refreshAccessToken = async (req, res) => {
   try {
-    const refreshToken = req.cookies.refreshToken;
+    const refreshToken = req.cookies?.refreshToken || req.body?.refreshToken;
+    
+    console.log('Received refresh token:', refreshToken); // Debug log
 
     if (!refreshToken) {
+      console.log('No refresh token provided');
       return res.status(401).json({ error: 'No refresh token provided' });
     }
 
+    // Verify the token first
+    const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
+    console.log('Decoded refresh token:', decoded);
+
+    // Then find the user
     const user = await User.findByRefreshToken(refreshToken);
     if (!user) {
+      console.log('No user found with this refresh token');
       return res.status(403).json({ error: 'Invalid refresh token' });
     }
 
-    jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET, (err, decoded) => {
-      if (err) {
-        return res.status(403).json({ error: 'Invalid or expired refresh token' });
-      }
+    // Generate new access token
+    const newAccessToken = jwt.sign(
+      { _id: user.id, username: user.username },
+      process.env.ACCESS_TOKEN_SECRET,
+      { expiresIn: process.env.ACCESS_TOKEN_EXPIRY }
+    );
 
-      const accessToken = jwt.sign(
-        { _id: user.id, username: user.username },
-        process.env.ACCESS_TOKEN_SECRET,
-        { expiresIn: process.env.ACCESS_TOKEN_EXPIRY }
-      );
-
-      res.cookie('accessToken', accessToken, { httpOnly: true, secure: true });
-      res.status(200).json({ message: 'Access token refreshed', accessToken });
+    // Set the new access token cookie
+    res.cookie('accessToken', newAccessToken, { 
+      httpOnly: true, 
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 15 * 60 * 1000 // 15 minutes
     });
+
+    return res.status(200).json({ 
+      message: 'Access token refreshed', 
+      accessToken: newAccessToken 
+    });
+
   } catch (error) {
-    res.status(500).json({ error: 'Failed to refresh access token', details: error.message });
+    console.error('Refresh token error:', error);
+    
+    if (error.name === 'TokenExpiredError') {
+      return res.status(403).json({ error: 'Refresh token expired' });
+    }
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(403).json({ error: 'Invalid refresh token' });
+    }
+    
+    return res.status(500).json({ 
+      error: 'Failed to refresh access token', 
+      details: error.message 
+    });
   }
 };
 

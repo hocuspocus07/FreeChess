@@ -174,7 +174,7 @@ let winnerId = winnerColor === 'w' ? player1_id : player2_id;
           const checkmatedPlayer = gameCopy.turn();
           if (checkmatedPlayer === 'w') {
             // White is checkmated, Black wins
-            result = 'Win';
+            result = 'Loss';
             winnerId = player2_id; // Black wins
           } else {
             // Black is checkmated, White wins

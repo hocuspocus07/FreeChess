@@ -46,6 +46,14 @@ class User{
         );
       }
 
+      static async findByRefreshToken(refreshToken) {
+        const [rows] = await pool.query(
+          'SELECT * FROM users WHERE refreshToken = ?',
+          [refreshToken]
+        );
+        return rows[0];
+      }
+
       static async searchByUsername(query) {
         const [rows] = await pool.query(
           'SELECT id, username, email FROM users WHERE username LIKE ?',

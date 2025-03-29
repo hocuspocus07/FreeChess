@@ -178,16 +178,33 @@ export const setAuthToken = (token) => {
 
 export const refreshAccessToken = async () => {
   try {
+    // Get refresh token from cookies (not localStorage)
+    const refreshToken = document.cookie
+      .split('; ')
+      .find(row => row.startsWith('refreshToken='))
+      ?.split('=')[1];
+
+    if (!refreshToken) {
+      throw new Error('No refresh token available');
+    }
+
     const response = await axios.post(
-      `${API_BASE_URL}/chess/users/refresh-token`,
-      {},
+      'http://localhost:8000/chess/users/refresh-token',
+      {}, // empty body since refresh token is in cookies
       {
-        withCredentials: true, // Include cookies
+        withCredentials: true // important for cookies
       }
     );
-    return response.data.accessToken; // Return the new access token
+
+    const { accessToken } = response.data;
+    localStorage.setItem('token', accessToken);
+    return accessToken;
   } catch (error) {
-    console.error('Error refreshing access token:', error);
+    console.error('Refresh token failed:', error);
+    // Clear invalid tokens and redirect to login
+    localStorage.removeItem('token');
+    document.cookie = 'refreshToken=; Max-Age=0; path=/;';
+    window.location.href = '/login';
     throw error;
   }
 };

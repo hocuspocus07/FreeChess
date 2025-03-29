@@ -3,6 +3,7 @@ import { Slider, Select, MenuItem, Button } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import {jwtDecode} from 'jwt-decode';
 import NavBar from '../components/NavBar.jsx';
+import { refreshAccessToken } from '../api.js';
 
 const PlayBot = () => {
   const [botRating, setBotRating] = useState(1500); 
@@ -20,32 +21,19 @@ const PlayBot = () => {
   };
 
   const handleStartGame = async () => {
-    const token = localStorage.getItem('token');
-    const userId = localStorage.getItem('userId');
-  
-    if (!userId) {
-      alert('User ID not found. Please log in again.');
-      return;
-    }
-  
-    if (!token) {
-      alert('You are not logged in. Please log in to start a game.');
-      return;
-    }
-  
-    console.log('Token:', token);
-    console.log('User ID:', userId);
-  
     try {
-      const decodedToken = jwtDecode(token);
-      const tokenUserId = decodedToken._id; 
-  
-      console.log('User ID from token:', tokenUserId);
-  
-      if (parseInt(userId, 10) !== tokenUserId) {
-        alert('User ID mismatch. Please log in again.');
-        return;
+      let token = localStorage.getItem('token');
+      
+      // Verify token is still valid
+      try {
+        jwtDecode(token);
+      } catch (decodeError) {
+        console.log('Token invalid, attempting refresh...');
+        token = await refreshAccessToken();
       }
+  
+      const decodedToken = jwtDecode(token);
+      const userId = decodedToken._id;
   
       const response = await fetch('http://localhost:8000/chess/game/create', {
         method: 'POST',
@@ -54,26 +42,30 @@ const PlayBot = () => {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          player1_id: parseInt(userId, 10), 
-          player2_id: -1, 
+          player1_id: userId,
+          player2_id: -1,
         }),
       });
   
       if (!response.ok) {
         const errorData = await response.json();
-        console.error('Error creating game:', errorData);
-        throw new Error('Failed to create game');
+        if (errorData.message === 'TOKEN EXPIRED') {
+          token = await refreshAccessToken();
+          return handleStartGame(); // Retry with new token
+        }
+        throw new Error(errorData.message || 'Failed to create game');
       }
   
       const data = await response.json();
-      const gameId = data.gameId;
-      console.log(data);
-  
-      // Navigate to the game page with gameId, bot rating, and time control
-      navigate(`/game/${gameId}?type=bot&rating=${botRating}&time=${timeControl}`);
+      navigate(`/game/${data.gameId}?type=bot&rating=${botRating}&time=${timeControl}`);
     } catch (error) {
-      console.error('Error creating game:', error);
-      alert('Failed to start the game. Please try again.');
+      console.error('Error:', error);
+      if (error.message.includes('401') || error.message.includes('TOKEN')) {
+        // Redirect to login if token issues persist
+        window.location.href = '/login';
+      } else {
+        alert(`Error: ${error.message}`);
+      }
     }
   };
 

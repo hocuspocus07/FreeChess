@@ -162,23 +162,9 @@ export const endGame = async (req, res) => {
 };
 
 export const botMove = async (req, res) => {
-  const { fen, botRating, gameId, playerId } = req.body; 
-  console.log("🔹 Bot move requested: GameID:", gameId, "PlayerID:", playerId, "FEN:", fen);
-
-  const getDepthFromRating = (botRating) => {
-    if (botRating <= 1000) {
-      return 1; 
-    } else if (botRating <= 1500) {
-      return 5; 
-    } else if (botRating <= 2000) {
-      return 10; 
-    } else {
-      return 20; 
-    }
-  };
-
-  const depth = getDepthFromRating(botRating);
-
+  const { fen, botRating, gameId, playerId } = req.body;
+  
+  // Validate input
   if (!gameId || !playerId) {
     return res.status(400).json({ error: "Missing gameId or playerId." });
   }
@@ -186,44 +172,84 @@ export const botMove = async (req, res) => {
   const stockfish = spawn(`${STOCKFISH_PATH}`);
   let buffer = '';
 
-  // Send Stockfish commands
+  // More granular bot configuration
+  const configureBot = (botRating) => {
+    if (botRating <= 800) {
+      return { skill: 0, depth: 1, movetime: 500, maxMistakes: 5 };
+    } else if (botRating <= 1200) {
+      return { skill: 4, depth: 3, movetime: 1000, maxMistakes: 3 };
+    } else if (botRating <= 1600) {
+      return { skill: 8, depth: 6, movetime: 1500, maxMistakes: 2 };
+    } else if (botRating <= 2000) {
+      return { skill: 15, depth: 10, movetime: 2000, maxMistakes: 1 };
+    } else {
+      return { skill: 20, depth: 15, movetime: 3000, maxMistakes: 0 };
+    }
+  };
+
+  const { skill, depth, movetime, maxMistakes } = configureBot(botRating);
+
+  // Configure Stockfish
   stockfish.stdin.write('uci\n');
+  stockfish.stdin.write('setoption name Skill Level value ' + skill + '\n');
   stockfish.stdin.write('setoption name UCI_LimitStrength value true\n');
   stockfish.stdin.write(`setoption name UCI_Elo value ${botRating}\n`);
+  
+  // Introduce random mistakes for weaker play
+  if (maxMistakes > 0) {
+    stockfish.stdin.write('setoption name Skill Level Maximum Error value ' + (maxMistakes * 100) + '\n');
+  }
+  
   stockfish.stdin.write(`position fen ${fen}\n`);
-  stockfish.stdin.write(`go depth ${depth}\n`);
+  
+  // Use either depth OR movetime, not both
+  if (botRating < 1600) {
+    stockfish.stdin.write(`go depth ${depth}\n`);
+  } else {
+    stockfish.stdin.write(`go movetime ${movetime}\n`);
+  }
 
   stockfish.stdout.on('data', (data) => {
     buffer += data.toString();
-    console.log("🔹 Stockfish Output:\n", buffer); 
-
     const lines = buffer.split('\n');
     buffer = lines.pop();
-    lines.forEach((line) => {
+    
+    for (const line of lines) {
       if (line.startsWith('bestmove')) {
-        const bestMove = line.split(' ')[1]; 
-        console.log(" Extracted bestmove:", bestMove);
-
+        let bestMove = line.split(' ')[1];
+        stockfish.kill();
+        
         if (bestMove && bestMove !== '(none)') {
-          stockfish.kill();
+          // Occasionally make a bad move for weaker bots
+          if (maxMistakes > 0 && Math.random() < 0.2) {
+            // Get all legal moves
+            const chess = new Chess(fen);
+            const legalMoves = chess.moves({verbose: true});
+            
+            // Filter out the best move and pick a random one
+            const otherMoves = legalMoves.filter(m => m.san !== bestMove);
+            if (otherMoves.length > 0) {
+              let randomMove = otherMoves[Math.floor(Math.random() * otherMoves.length)].san;
+              console.log(`Bot ${botRating} making intentional mistake: ${randomMove} instead of ${bestMove}`);
+              bestMove = randomMove;
+            }
+          }
           
           saveBotMove(gameId, playerId, bestMove)
             .then(() => res.json({ move: bestMove }))
-            .catch((error) => {
-              console.error('Failed to save bot move:', error);
-              res.status(500).json({ error: 'Failed to save bot move' });
+            .catch(error => {
+              console.error('Save error:', error);
+              res.status(500).json({ error: 'Failed to save move' });
             });
-        } else {
-          console.error('No valid bestmove received.');
-          stockfish.kill();
-          res.status(500).json({ error: 'No valid bestmove received.' });
+          return;
         }
       }
-    });
+    }
   });
 
+  stockfish.on('close', () => console.log('Stockfish process closed'));
   stockfish.stderr.on('data', (data) => {
-    console.error(`Stockfish error: ${data}`);
+    console.error('Stockfish error:', data.toString());
     res.status(500).json({ error: 'Stockfish error' });
   });
 };
@@ -254,46 +280,59 @@ export const saveBotGame=async(req,res)=>{
 
 const saveBotMove = async (gameId, playerId, move) => {
   try {
-    console.log(`Saving bot move: GameID=${gameId}, PlayerID=${playerId}, Move=${move}`);
+    console.log(`Attempting to save move: ${move}`);
 
     const moves = await Move.findByGameId(gameId);
-    console.log(`Existing moves for game ${gameId}:`, moves);
-
     const moveNumber = moves.length + 1;
-    console.log(`Calculated move number: ${moveNumber}`);
-
     const chess = new Chess();
-    moves.forEach((m) => {
-      console.log(`Replaying move: ${m.move}`);
-      const moveResult = chess.move(m.move); 
-      if (!moveResult) {
-        console.error(`Invalid move in history: ${m.move}`);
-        throw new Error(`Invalid move in history: ${m.move}`);
+
+    for (const m of moves) {
+      try {
+        chess.move(m.move);
+      } catch (e) {
+        throw new Error(`Invalid move in history (${m.move}): ${e.message}`);
       }
-      console.log("Board state after move:", chess.ascii());
-    });
-
-    console.log("Current board state before bot move:", chess.ascii());
-    console.log("FEN before bot move:", chess.fen());
-
-    // Convert UCI move (e.g., "g7g6") to { from, to } object
-    const from = move.slice(0, 2); // First two characters (e.g., "g7")
-    const to = move.slice(2, 4);   // Next two characters (e.g., "g6")
-    const promotion = move.length > 4 ? move[4] : undefined;
-    const moveObject = { from, to,promotion };
-
-    console.log("Validating bot move:", moveObject);
-    const moveResult = chess.move(moveObject);
-    if (!moveResult) {
-      console.error("Invalid bot move:", move);
-      throw new Error("Invalid bot move.");
     }
 
-    // Save the bot's move
-    await Move.create(gameId, playerId, moveNumber, moveResult.san); 
-    console.log('Bot move saved successfully:', moveResult.san);
+    let moveResult;
+    const trimmedMove = move.trim();
+
+    try {
+      moveResult = chess.move(trimmedMove);
+    } catch (sanError) {
+      if (trimmedMove.length >= 4) {
+        try {
+          moveResult = chess.move({
+            from: trimmedMove.slice(0, 2),
+            to: trimmedMove.slice(2, 4),
+            promotion: trimmedMove[4]?.toLowerCase()
+          });
+        } catch (uciError) {
+          const legalMoves = chess.moves({verbose: true});
+          const matchingMove = legalMoves.find(m => 
+            m.to === trimmedMove || 
+            m.san.toLowerCase().includes(trimmedMove.toLowerCase())
+          );
+          
+          if (matchingMove) {
+            moveResult = chess.move(matchingMove.san);
+          } else {
+            throw new Error(`No legal move matching "${trimmedMove}". Legal moves: ${chess.moves().join(', ')}`);
+          }
+        }
+      }
+    }
+
+    if (!moveResult) {
+      throw new Error('Failed to make move');
+    }
+
+    await Move.create(gameId, playerId, moveNumber, moveResult.san);
+    console.log(`Successfully saved move: ${moveResult.san}`);
+    return moveResult.san;
+
   } catch (error) {
-    console.error('Error saving bot move:', error);
-    throw error;
+    console.error(`Move save failed: ${error.message}`);
+    throw new Error(`Could not save move "${move}": ${error.message}`);
   }
 };

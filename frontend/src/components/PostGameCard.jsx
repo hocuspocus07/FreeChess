@@ -1,6 +1,11 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 function PostGameCard({ gameResult }) {
+  const navigate=useNavigate();
+  const closeGameCard=async()=>{
+    navigate('/play-bot');
+  }
   const { player1, player2, timeControl, result, winType } = gameResult;
 
   return (
@@ -58,7 +63,7 @@ function PostGameCard({ gameResult }) {
         {/* Close Button */}
         <button
           className="mt-6 w-full bg-[#7fa650] text-white py-2 rounded-lg hover:bg-[#8cf906] transition-all duration-300"
-          onClick={() => console.log("Close PostGameCard")} // Replace with your close handler
+          onClick={closeGameCard}
         >
           Close
         </button>
