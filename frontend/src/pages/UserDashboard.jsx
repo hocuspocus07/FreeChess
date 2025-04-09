@@ -1,10 +1,11 @@
-import React,{useState,useEffect} from 'react';
+import React, { useState, useEffect } from 'react';
 import NavBar from '../components/NavBar';
-import { getAllGamesByUser, getGameDetails, getUserDetails,getMoves } from '../api.js';
-import {jwtDecode} from 'jwt-decode'
+import { getAllGamesByUser, getGameDetails, getUserDetails, getMoves } from '../api.js';
+import { jwtDecode } from 'jwt-decode'
 import { useNavigate } from 'react-router-dom';
 import { Chess } from 'chess.js';
 import RecentMatchesTable from '../components/RecentMatchesTable.jsx';
+import PostGameCard from '../components/PostGameCard.jsx';
 
 const getUserIdFromToken = () => {
   const token = localStorage.getItem('token');
@@ -12,7 +13,7 @@ const getUserIdFromToken = () => {
 
   try {
     const decoded = jwtDecode(token);
-    return decoded._id; 
+    return decoded._id;
   } catch (error) {
     console.error('Failed to decode token:', error);
     return null;
@@ -32,13 +33,15 @@ export default function UserDashboard() {
   const [recentMatches, setRecentMatches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [selectedGame, setSelectedGame] = useState(null); 
-  const [moves, setMoves] = useState([]); 
-  const [currentMoveIndex, setCurrentMoveIndex] = useState(-1); 
-  const [game, setGame] = useState(new Chess()); 
+  const [selectedGame, setSelectedGame] = useState(null);
+  const [moves, setMoves] = useState([]);
+  const [currentMoveIndex, setCurrentMoveIndex] = useState(-1);
+  const [game, setGame] = useState(new Chess());
   const [selectedTimeControl, setSelectedTimeControl] = useState(null);
+  const [showPostGameCard, setShowPostGameCard] = useState(false);
+  const [selectedGameResult, setSelectedGameResult] = useState(null);
   const userId = getUserIdFromToken();
-  const navigate=useNavigate();
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (!userId) {
@@ -75,7 +78,7 @@ export default function UserDashboard() {
   };
 
   const handleTimeControlClick = (timeControl) => {
-    setSelectedTimeControl(timeControl); 
+    setSelectedTimeControl(timeControl);
   };
 
   const handleSeeAllGames = () => {
@@ -91,12 +94,42 @@ export default function UserDashboard() {
 
   const handleMatchClick = async (gameId) => {
     try {
+      const gameDetails = await getGameDetails(gameId);
       const movesResponse = await getMoves(gameId);
+      console.log(gameDetails, movesResponse);
+      const player1Data = {
+        username: user.username || 'You',
+        profilePic: user.profilePic || 'user.png',
+        rating: user.rating?.rapid || 0
+      };
+  
+      // Handle Player 2 (bot or human)
+      const player2Data = gameDetails.player2_id === -1 ? {
+        username: 'ChessBot',
+        profilePic: 'bot-icon.png',
+        rating: 1200
+      } : {
+        username: 'Opponent',
+        profilePic: 'default-pfp.png',
+        rating: 0
+      };
+  
+      setSelectedGameResult({
+        player1: player1Data,
+        player2: player2Data,
+        timeControl: 'Standard', // Default since not in your structure
+        result: gameDetails.status === 'finished' ? 
+          (gameDetails.winner_id === userId ? 'Win' : 
+           gameDetails.winner_id === null ? 'Draw' : 'Loss') : 'Unknown',
+        winType: '', // Not available in your structure
+        gameId
+      });
+
       setMoves(movesResponse);
       setCurrentMoveIndex(-1); // Reset move index
       setGame(new Chess()); // Reset the chess game
       setSelectedGame(gameId); // Set the selected game
-      navigate(`/replay/${gameId}`);
+      setShowPostGameCard(true);
     } catch (error) {
       console.error('Failed to fetch moves:', error);
       setError('Failed to fetch moves for the selected game.');
@@ -120,6 +153,12 @@ export default function UserDashboard() {
   return (
     <div className="min-h-screen bg-[#1a1a1a] text-white font-sans">
       <NavBar />
+      {showPostGameCard && selectedGameResult && (
+        <PostGameCard
+          gameResult={selectedGameResult}
+          onClose={() => setShowPostGameCard(false)}
+        />
+      )}
       <div className="max-w-4xl mx-auto mt-9">
         <div className="bg-[#2c2c2c] rounded-lg p-6 mb-6 shadow-lg">
           <h1 className="text-3xl font-extrabold mb-2">Welcome, {user.username}</h1>
@@ -127,7 +166,7 @@ export default function UserDashboard() {
         </div>
 
 
-<RecentMatchesTable
+        <RecentMatchesTable
           matches={recentMatches}
           selectedTimeControl={selectedTimeControl}
           onTimeControlClick={handleTimeControlClick}

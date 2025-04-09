@@ -94,12 +94,19 @@ const RecentMatchesTable = ({
           </thead>
           <tbody>
             {filteredMatches.slice(0, visibleMatches).map((match, index) => {
+              console.log(match);
+              console.log(typeof match.winner_id,match.winner_id);
+              console.log(typeof userId,userId);
               const result =
                 match.status === 'draw' || match.result === 'Draw'
                   ? 'Draw'
-                  : match.winner_id === userId
-                    ? 'Win'
-                    : 'Loss';
+                  : match.winner_id 
+      ? (typeof match.winner_id === 'object' 
+          ? match.winner_id.id 
+          : match.winner_id) === userId
+        ? 'Win'
+        : 'Loss'
+      : 'Loss';
               const timeControl = getTimeControl(match);
               const timeControlData = timeControlType.find((item) => item[timeControl]);
               const timeControlIcon = timeControlData ? timeControlData[timeControl] : null;
@@ -122,6 +129,7 @@ const RecentMatchesTable = ({
                         }`}
                     >
                       {resultList[result]}
+                      {console.log(result)}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-center">

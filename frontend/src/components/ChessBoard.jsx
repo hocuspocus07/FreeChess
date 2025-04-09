@@ -7,7 +7,7 @@ import UserInfo from './UserInfo.jsx';
 import MoveLog from './MoveLog.jsx';
 import PostGameCard from './PostGameCard.jsx';
 
-const ChessBoard = ({ isBotGame, botRating, timeControl, isViewOnly, gameId, userId, socket,player1_id,player2_id }) => {
+const ChessBoard = ({ isBotGame, botRating, timeControl, isViewOnly, gameId, userId, socket, player1_id, player2_id }) => {
   const [game, setGame] = useState(new Chess());
   const queryParams = new URLSearchParams(location.search);
   const isReplay = queryParams.get('replay') === 'true';
@@ -21,6 +21,8 @@ const ChessBoard = ({ isBotGame, botRating, timeControl, isViewOnly, gameId, use
   const [gameOver, setGameOver] = useState(false);
   const [capturedPieces, setCapturedPieces] = useState({ white: [], black: [] });
   const [materialAdvantage, setMaterialAdvantage] = useState(0);
+  const [showPostGameCard, setShowPostGameCard] = useState(false);
+  const [gameResultDisplay, setGameResultDisplay] = useState(null);
 
   const [postGameResult, setPostGameResult] = useState(null);
 
@@ -57,7 +59,7 @@ const ChessBoard = ({ isBotGame, botRating, timeControl, isViewOnly, gameId, use
       fetch('http://localhost:8000/chess/game/bot-move', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fen: game.fen(),botRating: botRating,gameId: gameId, playerId: player2_id }),
+        body: JSON.stringify({ fen: game.fen(), botRating: botRating, gameId: gameId, playerId: player2_id }),
       })
         .then(response => response.json())
         .then(data => {
@@ -75,7 +77,7 @@ const ChessBoard = ({ isBotGame, botRating, timeControl, isViewOnly, gameId, use
           checkGameOver(gameCopy);
         })
         .catch(error => console.error("Error fetching bot move:", error));
-      
+
     }
   }, [activePlayer, isBotGame, gameOver, game, botRating]);
 
@@ -128,17 +130,34 @@ const ChessBoard = ({ isBotGame, botRating, timeControl, isViewOnly, gameId, use
   const handleTimerExpired = async (winnerColor) => {
     setGameOver(true);
     clearInterval(timerRef.current);
-console.log(winnerColor,game,player1_id);
-let winnerId = winnerColor === 'w' ? player1_id : player2_id;
+
+    const winnerId = winnerColor === 'w' ? player1_id : player2_id;
+
     if (!winnerId) {
       console.error("Error: Winner ID is undefined!");
       return;
     }
-    console.log(`Time expired! Winner ID: ${winnerId}`);
-    if (!gameId) {
-      console.error('Game ID is undefined');
-      return;
-    }
+
+    const gameResult = {
+      player1: {
+        id: player1_id,
+        username: player1_id, // Replace with actual username if available
+        result: winnerColor === 'w' ? 'Win' : 'Loss'
+      },
+      player2: {
+        id: player2_id,
+        username: player2_id, // Replace with actual username if available
+        result: winnerColor === 'b' ? 'Win' : 'Loss'
+      },
+      timeControl: timeControl,
+      winnerId: winnerId,
+      winType: 'Time Out',
+      moves: moveLog,
+      gameId: gameId
+    };
+
+    setGameResultDisplay(gameResult);
+    setShowPostGameCard(true);
 
     try {
       const response = await fetch(`http://localhost:8000/chess/game/${gameId}/end`, {
@@ -150,6 +169,7 @@ let winnerId = winnerColor === 'w' ? player1_id : player2_id;
         body: JSON.stringify({
           winnerId,
           status: 'completed',
+          result: 'timeout'
         }),
       });
 
@@ -157,147 +177,179 @@ let winnerId = winnerColor === 'w' ? player1_id : player2_id;
     } catch (error) {
       console.error('Error updating game status:', error);
     }
-
-    alert(`Time's up! ${winnerColor === 'w' ? 'White' : 'Black'} wins!`);
   };
 
-  const checkGameOver = (gameCopy) => {
+  const checkGameOver = async (gameCopy) => {
     if (gameCopy.isGameOver()) {
-        setGameOver(true);
-        clearInterval(timerRef.current);
+      setGameOver(true);
+      clearInterval(timerRef.current);
 
-        let result;
-        let winnerId = null;
-        let winType = '';
+      let result;
+      let winnerId = null;
+      let winType = '';
 
-        if (gameCopy.isCheckmate()) {
-          const checkmatedPlayer = gameCopy.turn();
-          if (checkmatedPlayer === 'w') {
-            // White is checkmated, Black wins
-            result = 'Loss';
-            winnerId = player2_id; // Black wins
-          } else {
-            // Black is checkmated, White wins
-            result = 'Win';
-            winnerId = player1_id; // White wins
-          }
-          winType = 'Checkmate';
-        } else if (gameCopy.isStalemate()) {
-          result = 'Draw';
-          winType = 'Stalemate';
-        } else if (gameCopy.isDraw()) {
-          result = 'Draw';
-          winType = 'Draw';
+      if (gameCopy.isCheckmate()) {
+        winType = 'Checkmate';
+        if (gameCopy.turn() === 'w') {
+          // Black delivered checkmate
+          winnerId = player2_id;
+          result = {
+            player1: 'Loss',
+            player2: 'Win'
+          };
+        } else {
+          // White delivered checkmate
+          winnerId = player1_id;
+          result = {
+            player1: 'Win',
+            player2: 'Loss'
+          };
         }
-
-        setPostGameResult({
-          player1: {
-            username: player1_id,
-          },
-          player2: {
-            username: player2_id, 
-          },
-          timeControl: timeControl, 
-          result: result,
-          winType: winType, 
-        });
-
-        if (isBotGame) {
-          saveMatch(result, winnerId, userId, moveLog)
-            .then(() => console.log('Match saved successfully'))
-            .catch((error) => console.error('Failed to save match:', error));
-        }
-    }
-};
-
-const handleClosePostGameCard = () => {
-  setPostGameResult(null); 
-};
-
-
-const onDrop = async (sourceSquare, targetSquare) => {
-  try {
-    if (isReplay) return false; 
-    if (isViewOnly) return false; 
-
-    const piece = game.get(sourceSquare);
-    if (!piece || piece.color !== activePlayer || currentMoveIndex !== moveLog.length - 1) {
-      return false; 
-    }
-
-    const gameCopy = new Chess(game.fen());
-    const move = gameCopy.move({
-      from: sourceSquare,
-      to: targetSquare,
-      promotion: 'q', 
-    });
-
-    if (!move) {
-      console.error(`Invalid move: Move is not allowed. Current player: ${activePlayer}`);
-      return false; 
-    }
-
-    // Update captured pieces and material advantage
-    if (move.captured) {
-      const capturedPiece = move.captured.toLowerCase();
-      const updatedCapturedPieces = { ...capturedPieces };
-
-      if (piece.color === 'w') {
-        updatedCapturedPieces.black.push(capturedPiece);
-      } else {
-        updatedCapturedPieces.white.push(capturedPiece);
+      } else if (gameCopy.isDraw() || gameCopy.isStalemate()) {
+        winType = gameCopy.isStalemate() ? 'Stalemate' : 'Draw';
+        result = {
+          player1: 'Draw',
+          player2: 'Draw'
+        };
       }
 
-      setCapturedPieces(updatedCapturedPieces);
+      const gameResult = {
+        player1: {
+          id: player1_id,
+          username: player1_id,
+          result: result.player1
+        },
+        player2: {
+          id: player2_id,
+          username: player2_id,
+          result: result.player2
+        },
+        timeControl: timeControl,
+        winnerId: winnerId,
+        winType: winType,
+        moves: moveLog,
+        gameId:gameId,
+      };
 
-      const pieceValue = getPieceValue(capturedPiece.toLowerCase());
-      const advantageChange = piece.color === 'w' ? pieceValue : -pieceValue;
-      setMaterialAdvantage((prevAdvantage) => prevAdvantage + advantageChange);
+      setPostGameResult(gameResult);
+      setGameResultDisplay(gameResult);
+      setShowPostGameCard(true);
+
+      if (isBotGame) {
+        const resultStatus = winnerId ? 'completed' : 'draw';
+        const saveData = {
+          status: resultStatus,
+          winnerId: winnerId,
+          result: winType.toLowerCase(),
+          moves: moveLog
+        };
+        try {
+          const response = await fetch(`http://localhost:8000/chess/game/${gameId}/end`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${localStorage.getItem('token')}`,
+            },
+            body: JSON.stringify(saveData),
+          });
+  
+          if (!response.ok) throw new Error('Failed to update game status');
+          console.log('Game result saved successfully');
+        } catch (error) {
+          console.error('Error updating game status:', error);
+        }
+      }
     }
+  };
 
-    // Update move log and current move index
-    const newMoveLog = [...moveLog, move.san];
-    setMoveLog(newMoveLog);
-    setCurrentMoveIndex(newMoveLog.length - 1);
+  const handleClosePostGameCard = () => {
+    setPostGameResult(null);
+  };
 
-    // Prepare move data to save
-    const playerId = activePlayer === "w" ? player1_id : player2_id;
-    const moveData = {
-      playerId,
-      moveNumber: newMoveLog.length, 
-      move: move.san,
-    };
 
-    console.log("🔹 Sending move data:", moveData);
+  const onDrop = async (sourceSquare, targetSquare) => {
+    try {
+      if (isReplay) return false;
+      if (isViewOnly) return false;
 
-    // Save the move to the backend
-    const response = await fetch(`http://localhost:8000/chess/game/${gameId}/moves`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-      },
-      body: JSON.stringify(moveData),
-    });
+      const piece = game.get(sourceSquare);
+      if (!piece || piece.color !== activePlayer || currentMoveIndex !== moveLog.length - 1) {
+        return false;
+      }
 
-    if (!response.ok) throw new Error("Failed to save move");
+      const gameCopy = new Chess(game.fen());
+      const move = gameCopy.move({
+        from: sourceSquare,
+        to: targetSquare,
+        promotion: 'q',
+      });
 
-    console.log("Move saved:", await response.json());
+      if (!move) {
+        console.error(`Invalid move: Move is not allowed. Current player: ${activePlayer}`);
+        return false;
+      }
 
-    // Update the game state
-    setGame(gameCopy);
-    checkGameOver(gameCopy);
+      // Update captured pieces and material advantage
+      if (move.captured) {
+        const capturedPiece = move.captured.toLowerCase();
+        const updatedCapturedPieces = { ...capturedPieces };
 
-    if (!gameOver) {
-      setActivePlayer((prevPlayer) => (prevPlayer === 'w' ? 'b' : 'w'));
+        if (piece.color === 'w') {
+          updatedCapturedPieces.black.push(capturedPiece);
+        } else {
+          updatedCapturedPieces.white.push(capturedPiece);
+        }
+
+        setCapturedPieces(updatedCapturedPieces);
+
+        const pieceValue = getPieceValue(capturedPiece.toLowerCase());
+        const advantageChange = piece.color === 'w' ? pieceValue : -pieceValue;
+        setMaterialAdvantage((prevAdvantage) => prevAdvantage + advantageChange);
+      }
+
+      // Update move log and current move index
+      const newMoveLog = [...moveLog, move.san];
+      setMoveLog(newMoveLog);
+      setCurrentMoveIndex(newMoveLog.length - 1);
+
+      // Prepare move data to save
+      const playerId = activePlayer === "w" ? player1_id : player2_id;
+      const moveData = {
+        playerId,
+        moveNumber: newMoveLog.length,
+        move: move.san,
+      };
+
+      console.log("🔹 Sending move data:", moveData);
+
+      // Save the move to the backend
+      const response = await fetch(`http://localhost:8000/chess/game/${gameId}/moves`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: JSON.stringify(moveData),
+      });
+
+      if (!response.ok) throw new Error("Failed to save move");
+
+      console.log("Move saved:", await response.json());
+
+      // Update the game state
+      setGame(gameCopy);
+      await checkGameOver(gameCopy);
+
+      if (!gameOver) {
+        setActivePlayer((prevPlayer) => (prevPlayer === 'w' ? 'b' : 'w'));
+      }
+
+      return true; // Move was successful
+    } catch (error) {
+      console.error('Error handling move:', error.message);
+      return false; // Move failed
     }
-
-    return true; // Move was successful
-  } catch (error) {
-    console.error('Error handling move:', error.message);
-    return false; // Move failed
-  }
-};
+  };
 
   const getPieceValue = (piece) => {
     switch (piece) {
@@ -337,12 +389,15 @@ const onDrop = async (sourceSquare, targetSquare) => {
 
   return (
     <div className="flex justify-center items-center min-h-screen w-screen bg-[#2c2c2c] p-4">
-      {postGameResult && (
-        <PostGameCard gameResult={postGameResult} onClose={handleClosePostGameCard} />
+      {showPostGameCard && gameResultDisplay && (
+        <PostGameCard
+          gameResult={gameResultDisplay}
+          onClose={() => setShowPostGameCard(false)}
+        />
       )}
       <div className="flex flex-col h-full justify-center items-center lg:flex-row w-full gap-6">
         <div className="bg-gray-900 rounded-lg p-6 flex flex-col mt-10 lg:mt-0">
-        <UserInfo
+          <UserInfo
             playerName="Player 1"
             playerRating="1600"
             capturedPieces={capturedPieces.white}
@@ -352,12 +407,12 @@ const onDrop = async (sourceSquare, targetSquare) => {
             botRating={botRating}
           />
           <div className='h-6 w-screen flex bg-gray-800 text-white overflow-x-scroll md:hidden'>
-          <MoveLog
-            moveLog={moveLog}
-            currentMoveIndex={currentMoveIndex}
-            checkOutMove={checkOutMove}
-            isMobile={true}
-          />
+            <MoveLog
+              moveLog={moveLog}
+              currentMoveIndex={currentMoveIndex}
+              checkOutMove={checkOutMove}
+              isMobile={true}
+            />
           </div>
           <div className="sm:h-96 sm:w-96 lg:w-96 lg:h-96 md:w-96 md:h-96 h-auto w-screen">
             <Chessboard
@@ -376,7 +431,7 @@ const onDrop = async (sourceSquare, targetSquare) => {
           />
         </div>
         <div className='flex flex-col w-1/4 h-full'>
-        <MoveLog
+          <MoveLog
             moveLog={moveLog}
             currentMoveIndex={currentMoveIndex}
             checkOutMove={checkOutMove}
