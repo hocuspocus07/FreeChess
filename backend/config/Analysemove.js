@@ -5,49 +5,57 @@ const STOCKFISH_PATH = 'C:/Users/Lenovo/Desktop/coding/FreeChess/backend/stockfi
 
 const analyzeMove = async (fen, move) => {
   const chess = new Chess(fen);
-  chess.move(move);
+  const moveObj = chess.move(move);
+  if (!moveObj) {
+    throw new Error(`Invalid move: ${move} for FEN: ${fen}`);
+  }
 
   return new Promise((resolve, reject) => {
-    const engine = exec(STOCKFISH_PATH, (error) => {
-      if (error) {
-        console.error('Failed to start Stockfish:', error);
-        reject(`Failed to start Stockfish: ${error.message}`);
-      }
-    });
+    const engine = exec(STOCKFISH_PATH);
+    
+    let outputBuffer = '';
+    const timeout = setTimeout(() => {
+      engine.kill();
+      reject(new Error('Stockfish timeout'));
+    }, 10000); // 10 second timeout
 
-    console.log('Stockfish process started');
-
-    let bestMove = null;
-    let evaluation = null;
+    engine.stdin.write(`position fen ${fen}\n`);
+    engine.stdin.write(`go depth 15\n`);
 
     engine.stdout.on('data', (data) => {
-      const output = data.toString();
-      console.log('Stockfish output:', output); 
-
-      if (output.startsWith('bestmove')) {
-        bestMove = output.split(' ')[1];
-      }
-
-      if (output.includes('score cp')) {
-        const scoreMatch = output.match(/score cp (-?\d+)/);
-        if (scoreMatch) {
-          evaluation = parseInt(scoreMatch[1], 10);
-        }
-      }
-
-      if (bestMove && evaluation !== null) {
-        console.log('Analysis complete:', { bestMove, evaluation });
-        resolve({
-          bestMove,
-          evaluation,
-          isMistake: isMistake(evaluation),
-        });
+      outputBuffer += data.toString();
+      
+      // Check for complete analysis
+      if (outputBuffer.includes('bestmove')) {
+        clearTimeout(timeout);
+        
+        const bestMove = outputBuffer.match(/bestmove (\w+)/)?.[1];
+        const scoreMatch = outputBuffer.match(/score cp (-?\d+)/);
+        const evaluation = scoreMatch ? parseInt(scoreMatch[1], 10) : null;
+        
         engine.kill();
+        
+        if (bestMove && evaluation !== null) {
+          resolve({
+            bestMove,
+            evaluation,
+            isMistake: evaluation < -200, // Example threshold
+            // Add other analysis flags
+          });
+        } else {
+          reject(new Error('Incomplete analysis'));
+        }
       }
     });
 
-    engine.stdin.write(`position fen ${chess.fen()}\n`);
-    engine.stdin.write('go depth 15\n');
+    engine.on('error', (err) => {
+      clearTimeout(timeout);
+      reject(err);
+    });
+
+    engine.on('exit', (code) => {
+      console.log(`Stockfish exited with code ${code}`);
+    });
   });
 };
 export default analyzeMove;

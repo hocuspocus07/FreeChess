@@ -4,6 +4,6 @@ import { analyzeGame } from "../controllers/Analysis.controller.js";
 
 const analyzeRouter=Router();
 
-analyzeRouter.get('/analyze/:gameId',verifyJWT,analyzeGame);
+analyzeRouter.get('/:gameId',verifyJWT,analyzeGame);
 
 export default analyzeRouter;

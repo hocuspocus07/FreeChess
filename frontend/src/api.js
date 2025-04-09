@@ -228,9 +228,9 @@ export const makeAuthenticatedRequest = async (requestFunction) => {
   }
 };
 
-export const saveMatch = async (result, winnerId,userId,moveLog) => {
+export const saveMatch = async (status, winnerId,userId,moveLog) => {
   try {
-    const response = await fetch('http://localhost:8000/chess/game/save-bot-match', {
+    const response = await fetch(`${API_BASE_URL}/chess/game/save-bot-match`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -240,7 +240,7 @@ export const saveMatch = async (result, winnerId,userId,moveLog) => {
         player1_id: userId, 
         player2_id: -1, 
         winner_id: winnerId, 
-        status: result.includes('wins') ? 'completed' : 'draw',
+        status: status,
         moves: moveLog, 
       }),
     });
@@ -251,5 +251,27 @@ export const saveMatch = async (result, winnerId,userId,moveLog) => {
     console.log('Match saved successfully:', data);
   } catch (error) {
     console.error('Error saving match:', error);
+  }
+};
+
+export const analyzeGame = async (gameId) => {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/chess/analyze/${gameId}`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'Content-Type': 'application/json'
+      },
+      timeout: 120000
+    });
+
+    if (!response.data?.success) {
+      throw new Error(response.data?.error || 'Analysis failed');
+    }
+
+    // Return either analysisResults or the full response data
+    return response.data.analysisResults || response.data;
+  } catch (error) {
+    console.error('Error analyzing game:', error);
+    throw error;
   }
 };
