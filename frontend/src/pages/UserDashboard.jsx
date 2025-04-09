@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { Chess } from 'chess.js';
 import RecentMatchesTable from '../components/RecentMatchesTable.jsx';
 import PostGameCard from '../components/PostGameCard.jsx';
+import MatchStats from '../components/MatchStats.jsx';
 
 const getUserIdFromToken = () => {
   const token = localStorage.getItem('token');
@@ -85,13 +86,6 @@ export default function UserDashboard() {
     setSelectedTimeControl(null); // Reset the filter
   };
 
-  const calculateWinLossRatio = () => {
-    if (!recentMatches.length) return '0% Wins';
-    const wins = recentMatches.filter((match) => match.result === 'Win').length;
-    const ratio = ((wins / recentMatches.length) * 100).toFixed(0);
-    return `${ratio}% Wins`;
-  };
-
   const handleMatchClick = async (gameId) => {
     try {
       const gameDetails = await getGameDetails(gameId);
@@ -102,7 +96,7 @@ export default function UserDashboard() {
         profilePic: user.profilePic || 'user.png',
         rating: user.rating?.rapid || 0
       };
-  
+
       // Handle Player 2 (bot or human)
       const player2Data = gameDetails.player2_id === -1 ? {
         username: 'ChessBot',
@@ -113,14 +107,14 @@ export default function UserDashboard() {
         profilePic: 'default-pfp.png',
         rating: 0
       };
-  
+
       setSelectedGameResult({
         player1: player1Data,
         player2: player2Data,
         timeControl: 'Standard', // Default since not in your structure
-        result: gameDetails.status === 'finished' ? 
-          (gameDetails.winner_id === userId ? 'Win' : 
-           gameDetails.winner_id === null ? 'Draw' : 'Loss') : 'Unknown',
+        result: gameDetails.status === 'finished' ?
+          (gameDetails.winner_id === userId ? 'Win' :
+            gameDetails.winner_id === null ? 'Draw' : 'Loss') : 'Unknown',
         winType: '', // Not available in your structure
         gameId
       });
@@ -171,24 +165,11 @@ export default function UserDashboard() {
           selectedTimeControl={selectedTimeControl}
           onTimeControlClick={handleTimeControlClick}
           onMatchClick={handleMatchClick}
-          userId={userId}
+          profileUserId={userId}
           onSeeAllGames={handleSeeAllGames}
         />
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-6">
-          <div className="bg-[#2c2c2c] rounded-lg p-6 shadow-lg">
-            <h2 className="text-xl font-bold mb-4">Win/Loss Ratio</h2>
-            <div className="h-40 bg-[#3a3a3a] rounded-lg flex items-center justify-center">
-              <span className="text-2xl font-bold text-[#7fa650]">{calculateWinLossRatio()}</span>
-            </div>
-          </div>
-          <div className="bg-[#2c2c2c] rounded-lg p-6 shadow-lg">
-            <h2 className="text-xl font-bold mb-4">Total Games Played</h2>
-            <div className="h-40 bg-[#3a3a3a] rounded-lg flex items-center justify-center">
-              <span className="text-2xl font-bold text-[#7fa650]">{recentMatches.length}</span>
-            </div>
-          </div>
-        </div>
+        <MatchStats recentMatches={recentMatches} userId={userId} />
       </div>
     </div>
   );

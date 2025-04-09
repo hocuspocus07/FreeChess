@@ -10,11 +10,11 @@ import {
 } from 'ionicons/icons';
 
 const RecentMatchesTable = ({
-  matches,
+  matches = [],
   selectedTimeControl,
   onTimeControlClick,
   onMatchClick,
-  userId,
+  profileUserId,
   onSeeAllGames,
 }) => {
   const [visibleMatches, setVisibleMatches] = useState(5); // State to control the number of visible matches
@@ -94,19 +94,16 @@ const RecentMatchesTable = ({
           </thead>
           <tbody>
             {filteredMatches.slice(0, visibleMatches).map((match, index) => {
-              console.log(match);
-              console.log(typeof match.winner_id,match.winner_id);
-              console.log(typeof userId,userId);
               const result =
-                match.status === 'draw' || match.result === 'Draw'
-                  ? 'Draw'
-                  : match.winner_id 
-      ? (typeof match.winner_id === 'object' 
-          ? match.winner_id.id 
-          : match.winner_id) === userId
-        ? 'Win'
-        : 'Loss'
-      : 'Loss';
+              match.status === 'draw' || match.result === 'Draw'
+              ? 'Draw'
+              : match.winner_id === null
+                ? 'Draw'
+                : (typeof match.winner_id === 'object' 
+                    ? match.winner_id.id 
+                    : match.winner_id).toString() === profileUserId.toString()
+                  ? 'Win'
+                  : 'Loss';
               const timeControl = getTimeControl(match);
               const timeControlData = timeControlType.find((item) => item[timeControl]);
               const timeControlIcon = timeControlData ? timeControlData[timeControl] : null;
