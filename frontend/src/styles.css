@@ -22,3 +22,33 @@
   .scrollbar-custom::-webkit-scrollbar-thumb:hover {
     background: #718096;
   }
+
+  @keyframes typing {
+    0%, 10% {
+      width: 0;
+    }
+    45%, 55% {
+      width: 6.2em;
+    }
+    90%, 100% {
+      width: 0;
+    }
+  }
+  
+  @keyframes blink {
+    50% {
+      border-right-color: transparent;
+    }
+  }
+  
+  .typing-animation {
+    animation: typing 4s steps(11) infinite;
+    white-space: nowrap;
+    overflow: hidden;
+    border-right: 2px solid white; 
+  }
+  
+  .blink-animation {
+    animation: blink 0.5s step-end infinite alternate;
+  }
+  

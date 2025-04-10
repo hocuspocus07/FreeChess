@@ -6,6 +6,9 @@ import { getMoves, analyzeGame } from '../api.js';
 import NavBar from './NavBar.jsx';
 import MoveLog from './MoveLog.jsx';
 import UserInfo from './UserInfo.jsx';
+import EvalBar from './EvalBar.jsx';
+import Loading from './Loading.jsx';
+
 import { BackwardIcon, ForwardIcon } from '@heroicons/react/24/outline';
 
 const ReplayGame = () => {
@@ -99,19 +102,19 @@ const ReplayGame = () => {
 
     if (analysisMode && analysis && index >= 0) {
       const moveAnalysis = analysis.find(a => a.moveId === moves[index].id);
-      console.log("move analysis",moveAnalysis);
+      console.log("move analysis", moveAnalysis);
       let moveType = null;
-      
+
       if (moveAnalysis) {
         if (moveAnalysis.isBlunder) moveType = 'blunder';
         else if (moveAnalysis.isMistake) moveType = 'mistake';
         else if (moveAnalysis.isInaccuracy) moveType = 'inaccuracy';
         else if (moveAnalysis.isBestMove) moveType = 'bestmove';
-        else if (moveAnalysis.isGreatMove) moveType= 'greatmove';
-    else if (moveAnalysis.isExcellent) moveType= 'excellent';
-    else if (moveAnalysis.isGood) moveType= 'good';
-    else if (moveAnalysis.isBook) moveType= 'book';
-    else if (moveAnalysis.isMiss) moveType= 'miss';
+        else if (moveAnalysis.isGreatMove) moveType = 'greatmove';
+        else if (moveAnalysis.isExcellent) moveType = 'excellent';
+        else if (moveAnalysis.isGood) moveType = 'good';
+        else if (moveAnalysis.isBook) moveType = 'book';
+        else if (moveAnalysis.isMiss) moveType = 'miss';
       }
       console.log(`Move ${index + 1}: ${moves[index].move} | Type: ${moveType} | Square: ${lastMoveToSquare}`);
       setCurrentMoveType(moveType);
@@ -129,10 +132,10 @@ const ReplayGame = () => {
 
   const highlightMoveSquares = () => {
     const styles = {};
-  
+
     if (currentMoveIndex >= 0 && moveTypePosition) {
       let imageUrl = null;
-  
+
       switch (currentMoveType) {
         case "bestmove":
           imageUrl = "/best.png";
@@ -152,7 +155,7 @@ const ReplayGame = () => {
         default:
           imageUrl = null;
       }
-  
+
       if (imageUrl) {
         styles[moveTypePosition] = {
           backgroundImage: `url(${imageUrl})`,
@@ -162,11 +165,11 @@ const ReplayGame = () => {
         };
       }
     }
-  
+
     return styles;
   };
-  
-  
+
+
 
   const getPieceValue = (piece) => {
     switch (piece) {
@@ -178,9 +181,13 @@ const ReplayGame = () => {
       default: return 0;
     }
   };
-  
-  if (loading) {return <div>Loading...</div>;
+
+  if (loading) {
+    return <Loading/>;
   }
+  const currentEvaluation = analysisMode && analysis && currentMoveIndex >= 0
+    ? analysis.find(a => a.moveId === moves[currentMoveIndex]?.id)?.evaluation || materialAdvantage
+    : materialAdvantage;
   return (
     <div className="min-h-screen bg-[#1a1a1a] text-white font-sans">
       <NavBar />
@@ -189,6 +196,11 @@ const ReplayGame = () => {
           {analysisMode ? 'Game Analysis' : 'Game Replay'}
         </h2>
         <div className="flex flex-col lg:flex-row gap-6 bg-gray-900 p-5 rounded-lg">
+          <div className="lg:hidden flex justify-center mb-4">
+            <div className="w-full max-w-[400px]"> {/* Horizontal bar for mobile */}
+              <EvalBar evaluation={currentEvaluation} />
+            </div>
+          </div>
           <div className="flex justify-center flex-col sm:w-1/2 sm:h-auto">
             <div className='w-full overflow-y-scroll'>
               <MoveLog
@@ -207,11 +219,18 @@ const ReplayGame = () => {
               isBot={false}
             />
 
-<Chessboard
-  position={game.fen()}
-  arePiecesDraggable={false}
-  customSquareStyles={highlightMoveSquares()}
-/>
+            <div className="flex items-stretch">
+              <div className="hidden lg:block"> {/* Desktop EvalBar */}
+                <EvalBar evaluation={currentEvaluation} />
+              </div>
+              <div className="flex-1">
+                <Chessboard
+                  position={game.fen()}
+                  arePiecesDraggable={false}
+                  customSquareStyles={highlightMoveSquares()}
+                />
+              </div>
+            </div>
 
 
             <UserInfo
@@ -251,6 +270,7 @@ const ReplayGame = () => {
         </div>
       </div>
     </div>
-  );}
+  );
+}
 
 export default ReplayGame;

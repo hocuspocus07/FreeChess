@@ -88,45 +88,84 @@ export default function UserDashboard() {
 
   const handleMatchClick = async (gameId) => {
     try {
-      const gameDetails = await getGameDetails(gameId);
-      const movesResponse = await getMoves(gameId);
-      console.log(gameDetails, movesResponse);
+      const [gameDetails, movesResponse] = await Promise.all([
+        getGameDetails(gameId),
+        getMoves(gameId)
+      ]);
+  
+      console.log('Game details:', gameDetails);
+  
+      // Calculate time control from game duration
+      const timeControl = (() => {
+        const duration = (new Date(gameDetails.end_time) - new Date(gameDetails.start_time)) / 1000;
+        if (duration < 180) return 'Bullet';
+        if (duration <= 600) return 'Blitz';
+        return 'Rapid';
+      })();
+  
+      // Determine actual result based on status and winner_id
+      const determineResult = () => {
+        if (gameDetails.status === 'draw') return 'Draw';
+        if (gameDetails.winner_id === null) return 'Draw';
+        console.log(typeof gameDetails.winner_id,typeof userId)
+        return gameDetails.winner_id === userId ? 'Win' : 'Loss';
+      };
+  
+      const result = determineResult();
+  
+      // Determine win type based on game outcome
+      const determineWinType = () => {
+        if (result === 'Draw') return 'Draw';
+        if (!gameDetails.moves?.length) return 'Standard';
+        // Add logic here to detect checkmate, timeout, etc. if available
+        return 'Standard'; // Default if no specific win type detected
+      };
+  
       const player1Data = {
+        id: userId,
         username: user.username || 'You',
-        profilePic: user.profilePic || 'user.png',
-        rating: user.rating?.rapid || 0
+        profilePic: user.profilePic || '/default-user.png',
+        rating: user.rating?.rapid || 0,
+        result: result
       };
-
-      // Handle Player 2 (bot or human)
+  
       const player2Data = gameDetails.player2_id === -1 ? {
+        id: -1,
         username: 'ChessBot',
-        profilePic: 'bot-icon.png',
-        rating: 1200
+        profilePic: '/bot-icon.png',
+        rating: 1200,
+        result: result === 'Win' ? 'Loss' : result === 'Loss' ? 'Win' : 'Draw'
       } : {
-        username: 'Opponent',
-        profilePic: 'default-pfp.png',
-        rating: 0
+        id: gameDetails.player2_id,
+        username: gameDetails.opponent_username || 'Opponent',
+        profilePic: '/default-user.png',
+        rating: 0,
+        result: result === 'Win' ? 'Loss' : result === 'Loss' ? 'Win' : 'Draw'
       };
-
-      setSelectedGameResult({
+  
+      const gameResult = {
+        gameId,
         player1: player1Data,
         player2: player2Data,
-        timeControl: 'Standard', // Default since not in your structure
-        result: gameDetails.status === 'finished' ?
-          (gameDetails.winner_id === userId ? 'Win' :
-            gameDetails.winner_id === null ? 'Draw' : 'Loss') : 'Unknown',
-        winType: '', // Not available in your structure
-        gameId
-      });
-
-      setMoves(movesResponse);
-      setCurrentMoveIndex(-1); // Reset move index
-      setGame(new Chess()); // Reset the chess game
-      setSelectedGame(gameId); // Set the selected game
+        timeControl,
+        result, // This will be 'Win', 'Loss', or 'Draw'
+        winType: determineWinType(),
+        moves: movesResponse.moves || [],
+        winnerId: gameDetails.winner_id
+      };
+  
+      console.log('Processed game result:', gameResult);
+  
+      setSelectedGameResult(gameResult);
+      setMoves(movesResponse.moves || []);
+      setCurrentMoveIndex(-1);
+      setGame(new Chess());
+      setSelectedGame(gameId);
       setShowPostGameCard(true);
+  
     } catch (error) {
-      console.error('Failed to fetch moves:', error);
-      setError('Failed to fetch moves for the selected game.');
+      console.error('Failed to load game details:', error);
+      setError('Failed to load game details. Please try again.');
     }
   };
 
