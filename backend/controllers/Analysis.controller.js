@@ -268,25 +268,10 @@ export const analyzeGame = async (req, res) => {
             stockfishProcess.stdout.on('data', onData);
           });
 
-          const analysisId = await Analysis.create(
-            move.id,
-            analysis.bestMove,
-    analysis.evaluation,
-    analysis.isGreatMove,
-    analysis.isBestMove,
-    analysis.isExcellent,
-    analysis.isGood,
-    analysis.isBook,
-    analysis.isInaccuracy,
-    analysis.isMistake,
-    analysis.isMiss,
-    analysis.isBlunder
-          );
 
           results.push({
             moveId: move.id,
             status: 'success',
-            analysisId,
             timeTaken: Date.now() - startTime,
             ...analysis,
           });
@@ -306,7 +291,7 @@ export const analyzeGame = async (req, res) => {
       // In your Analysis.controller.js
       res.json({
         success: true,
-        analysisResults: results.map(result => ({
+        analysisResults: results.filter(r => r.status === 'success').map(result => ({
           moveId: result.moveId,
           bestMove: result.bestMove,
           evaluation: result.evaluation,

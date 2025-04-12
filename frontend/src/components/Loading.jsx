@@ -1,6 +1,6 @@
 import React from 'react';
 
-function Loading() {
+function Loading({text}) {
   return (
     <div className='w-screen h-screen overflow-hidden flex justify-center items-center bg-[#1a1a1a]'>
     <div className="border border-gray-700 bg-[#1a1a1a] text-green-400 font-mono text-base p-6 w-48 shadow-lg rounded-md relative overflow-hidden box-border">
@@ -16,7 +16,7 @@ function Loading() {
       
       {/* Animated text */}
       <div className="inline-block whitespace-nowrap overflow-hidden border-r-2 border-green-400 mt-6 animate-[typing_4s_steps(11)_infinite,blink_0.5s_step-end_infinite_alternate]">
-        Analysing...
+        {text}...
       </div>
     </div></div>
   );

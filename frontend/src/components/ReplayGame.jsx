@@ -181,9 +181,8 @@ const ReplayGame = () => {
       default: return 0;
     }
   };
-
   if (loading) {
-    return <Loading/>;
+    return <Loading text='Analysing'/>;
   }
   const currentEvaluation = analysisMode && analysis && currentMoveIndex >= 0
     ? analysis.find(a => a.moveId === moves[currentMoveIndex]?.id)?.evaluation || materialAdvantage

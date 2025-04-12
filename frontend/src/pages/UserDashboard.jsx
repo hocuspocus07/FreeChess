@@ -7,6 +7,7 @@ import { Chess } from 'chess.js';
 import RecentMatchesTable from '../components/RecentMatchesTable.jsx';
 import PostGameCard from '../components/PostGameCard.jsx';
 import MatchStats from '../components/MatchStats.jsx';
+import Loading from '../components/Loading.jsx';
 
 const getUserIdFromToken = () => {
   const token = localStorage.getItem('token');
@@ -170,7 +171,7 @@ export default function UserDashboard() {
   };
 
   if (loading) {
-    return <div className="min-h-screen bg-[#1a1a1a] text-white font-sans">Loading...</div>;
+    return <Loading text='Loading'/>;
   }
 
   if (error) {
