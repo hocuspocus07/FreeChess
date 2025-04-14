@@ -11,12 +11,10 @@ import HowToPlay from './pages/HowToPlay.jsx';
 import PlayBot from './pages/PlayBot.jsx';
 import ReplayGame from './components/ReplayGame.jsx';
 import MultiPlayer from './pages/MultiPlayer.jsx';
-import { SocketProvider } from './socketContext.jsx';
 
 function App() {
 
   return (
-    <SocketProvider>
       <Router>
       <Routes>
         <Route path="/" element={<Landing />} />
@@ -33,7 +31,6 @@ function App() {
         <Route path='/play-online' element={<MultiPlayer/>}/>
       </Routes>
     </Router>
-    </SocketProvider>
   )
 }
 

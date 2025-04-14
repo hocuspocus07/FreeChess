@@ -342,3 +342,22 @@ const saveBotMove = async (gameId, playerId, move) => {
     throw new Error(`Could not save move "${move}": ${error.message}`);
   }
 };
+
+export const getWaitingGames=async (req,res)=>{
+  try {
+    const waitingGames = await Game.findWaitingGames();
+    res.json(waitingGames);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+}
+
+export const deleteAbandonedGames=async (req,res)=>{
+  try {
+    // Clean up abandoned games
+    await Game.cleanupAbandonedGames();
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+}

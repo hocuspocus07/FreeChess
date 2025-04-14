@@ -6,26 +6,197 @@ import gameRouter from './routes/game.routes.js'
 import userRouter from './routes/user.routes.js'
 import moveRouter from './routes/move.routes.js'
 import analyzeRouter from './routes/analyze.routes.js'
+import { Server } from 'socket.io'
+import Game from './models/Game.models.js'
+import dotenv from 'dotenv'
+import jwt from 'jsonwebtoken'
+import { Chess } from 'chess.js'
 
-const app=express()
-app.use(cors({
-    origin: 'http://localhost:5173', 
-    credentials: true, 
-  }));
-  app.options('*', cors({
-    origin: 'http://localhost:5173',
-    credentials: true,
-  }));
+dotenv.config();
 
-const server=http.createServer(app);
+const app = express()
+const corsOptions = {
+  origin: 'http://localhost:5173',
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
+
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: "http://localhost:5173",
+    methods: ["GET", "POST"]
+  }
+});
+
+// Track active games and waiting players
+const activeGames = new Map();
+const waitingPlayers = new Map();
+
+// Socket.IO connection handler
+io.on("connection", (socket) => {
+  console.log(`User connected: ${socket.id}`);
+
+  // Middleware to verify and attach user data
+  socket.use((packet, next) => {
+    if (['joinMatchmaking', 'joinGame', 'makeMove'].includes(packet[0])) {
+      const token = socket.handshake.auth.token;
+      if (!token) {
+        return next(new Error('Authentication error'));
+      }
+      try {
+        // Verify token and attach user data
+        const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
+        socket.user = decoded;
+        next();
+      } catch (err) {
+        next(new Error('Invalid token'));
+      }
+    } else {
+      next();
+    }
+  });
+
+  // Error handler
+  socket.on('error', (err) => {
+    console.error('Socket error:', err.message);
+    socket.emit('error', { message: err.message });
+  });
+
+  // Matchmaking system
+  socket.on('joinMatchmaking', async () => {
+    if (!socket.user) return socket.emit('error', { message: 'Authentication required' });
+
+    const userId = socket.user._id.toString();
+    console.log(`User ${userId} joined matchmaking`);
+
+    if (waitingPlayers.has(userId)) {
+      return socket.emit('error', { message: 'Already in matchmaking' });
+    }
+
+    // Try to find a match
+    for (const [waitingUserId, waitingSocket] of waitingPlayers) {
+      if (waitingUserId !== userId) {
+        try {
+          const gameId = await Game.create(waitingUserId, userId, null, 'active');
+          const initialFen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+          
+          // Create game room and add both players
+          waitingSocket.join(gameId);
+          socket.join(gameId);
+          
+          activeGames.set(gameId, {
+            chess: new Chess(initialFen),
+            player1: waitingUserId,
+            player2: userId,
+            currentTurn: waitingUserId
+          });
+
+          // Notify both players with complete game data
+          io.to(waitingSocket.id).emit('gameReady', {
+            gameId,
+            isWhite: true,
+            opponentId: userId,
+            initialFen
+          });
+
+          io.to(socket.id).emit('gameReady', {
+            gameId,
+            isWhite: false,
+            opponentId: waitingUserId,
+            initialFen
+          });
+
+          waitingPlayers.delete(waitingUserId);
+          return;
+        } catch (error) {
+          console.error('Game creation error:', error);
+          socket.emit('error', { message: 'Failed to start game' });
+        }
+      }
+    }
+
+    // No match found - wait
+    waitingPlayers.set(userId, socket);
+    socket.emit('waitingForOpponent');
+  });
+
+  socket.on('makeMove', async ({ gameId, move }) => {
+    try {
+      const game = activeGames.get(gameId);
+      if (!game) return socket.emit('error', { message: 'Game not found' });
+
+      // Validate against current game state
+      const moveObj = game.chess.move(move);
+      if (!moveObj) return socket.emit('invalidMove', { message: 'Invalid move' });
+
+      // Update turn
+      game.currentTurn = game.chess.turn() === 'w' ? game.player1 : game.player2;
+      
+      // Broadcast to ALL players in the game room
+      io.to(gameId).emit('moveMade', {
+        move: moveObj.san,
+        fen: game.chess.fen(),
+        currentTurn: game.currentTurn
+      });
+
+      // Save move to database
+      const moveNumber = game.chess.history().length;
+      await Game.saveMove(gameId, socket.user._id, moveNumber, moveObj.san);
+
+    } catch (error) {
+      console.error('Move processing error:', error);
+      socket.emit('error', { message: 'Move processing failed' });
+    }
+  });
+
+// Handle game restoration on reconnection
+socket.on('restoreGame', async ({ gameId }) => {
+    try {
+        const gameState = await Game.getGameState(gameId);
+        const game = activeGames.get(gameId) || {
+            chess: new Chess(),
+            player1: null,
+            player2: null,
+            currentTurn: 'white'
+        };
+        
+        // Reconstruct game from moves
+        gameState.moves.forEach(move => {
+            game.chess.move(move.move);
+        });
+        
+        activeGames.set(gameId, game);
+        socket.emit('gameRestored', gameState);
+    } catch (error) {
+        socket.emit('error', { message: 'Failed to restore game' });
+    }
+});
+
+
+  // Disconnection handler
+  socket.on('disconnect', () => {
+    console.log(`User disconnected: ${socket.id}`);
+    if (socket.user) {
+      waitingPlayers.delete(socket.user._id.toString());
+    }
+  });
+});
+
+// Express middleware
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }))
+app.use(express.urlencoded({ extended: true }));
 app.use(express.static("public"));
-app.use(cookieParser()); 
+app.use(cookieParser());
 
-app.use('/chess/game',gameRouter);
-app.use('/chess/users',userRouter);
-app.use('/chess/moves',moveRouter);
-app.use('/chess/analyze',analyzeRouter);
+// Routes
+app.use('/chess/game', gameRouter);
+app.use('/chess/users', userRouter);
+app.use('/chess/moves', moveRouter);
+app.use('/chess/analyze', analyzeRouter);
 
-export {app,server}
+export { app, server };

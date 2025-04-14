@@ -20,6 +20,7 @@
     "axios": "^1.8.3",
     "chess-evaluation-bar": "^0.1.4",
     "chess.js": "^1.1.0",
+    "chessboardjs": "^0.0.1",
     "dotenv": "^16.4.7",
     "flowbite": "^3.1.2",
     "ionicons": "^7.4.0",

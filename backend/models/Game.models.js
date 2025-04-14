@@ -1,5 +1,5 @@
 import { pool } from "../config/db.js";
-
+import { Chess } from "chess.js";
 class Game{
     static async create(player1_id,player2_id,winner_id,status){
         const [result]=await pool.query(
@@ -74,6 +74,51 @@ class Game{
             );
             return rows[0];
           }
+
+          static async findWaitingGames() {
+            const [rows] = await pool.query(
+              'SELECT * FROM games WHERE status = "waiting" AND player2_id IS NULL'
+            );
+            return rows;
+          }
+
+          static async cleanupAbandonedGames() {
+            // Clean up games older than 1 hour with no moves
+            const [result] = await pool.query(
+              `DELETE FROM games 
+               WHERE status = 'waiting' 
+               AND created_at < DATE_SUB(NOW(), INTERVAL 1 HOUR)`
+            );
+            return result;
+          }
+
+          static async saveMove(gameId, playerId, moveNumber, move) {
+            await pool.query(
+                "INSERT INTO moves (game_id, player_id, move_number, move) VALUES (?, ?, ?, ?)",
+                [gameId, playerId, moveNumber, move]
+            );
+        }
+    
+        // Update this method to handle game state
+        static async getGameState(gameId) {
+            // Get all moves for this game
+            const [moves] = await pool.query(
+                "SELECT * FROM moves WHERE game_id = ? ORDER BY move_number ASC",
+                [gameId]
+            );
+            
+            // Reconstruct game state from moves
+            const chess = new Chess();
+            moves.forEach(move => {
+                chess.move(move.move);
+            });
+            
+            return {
+                fen: chess.fen(),
+                currentTurn: chess.turn() === 'w' ? 'white' : 'black',
+                moves
+            };
+        }
 }
 
 export default Game;
