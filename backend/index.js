@@ -1,14 +1,19 @@
-import express from 'express'
-import dotenv from "dotenv"
-import {  pool,checkDatabaseConnection } from "./config/db.js"
-import { app } from './app.js';
+import express from 'express';
+import dotenv from "dotenv";
+import { pool, checkDatabaseConnection } from "./config/db.js";
+import { server } from './app.js'; // Only import server
+
 dotenv.config();
-const port=8000;
+const port = process.env.PORT || 8000;
+
 checkDatabaseConnection()
-    .then(() => {
-        app.listen(port, () => {
-            console.log("server listening on ",port);
-        })
-    }).catch((error) => {
-        console.log("connection failed: ", error);
-    })
+  .then(() => {
+    server.listen(port, () => {
+      console.log(`Server listening on port ${port}`);
+      console.log(`Socket.IO available at ws://localhost:${port}/socket.io`);
+    });
+  })
+  .catch((error) => {
+    console.error("Database connection failed: ", error);
+    process.exit(1);
+  });

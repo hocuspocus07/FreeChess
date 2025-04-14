@@ -9,6 +9,12 @@ class Game{
         return result.insertId;
     }
 
+    static async update(gameId, updateFields) {
+      const query = 'UPDATE games SET ? WHERE id = ?';
+      const [result] = await pool.query(query, [updateFields, gameId]);
+      return result;
+  }
+
     static async updateMoves(id, moves) {
       console.log(`Updating moves for game ${id}:`, moves);
       await pool.query(

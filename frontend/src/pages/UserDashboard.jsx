@@ -56,28 +56,53 @@ export default function UserDashboard() {
     fetchRecentMatches();
   }, [userId]);
 
-  const fetchUserDetails = async () => {
-    try {
-      const response = await getUserDetails(userId);
-      console.log(response);
-      setUser(response.user);
-    } catch (error) {
-      console.error('Failed to fetch user details:', error);
-      setError('Failed to fetch user details. Please try again later.');
-    } finally {
-      setLoading(false);
+  // Update your fetchUserDetails function
+const fetchUserDetails = async () => {
+  try {
+    const response = await getUserDetails(userId);
+    if (!response || !response.user) {
+      throw new Error('Invalid user data received');
     }
-  };
+    setUser({
+      username: response.user.username,
+      dateJoined: response.user.created_at,
+      rating: response.user.rating || {
+        bullet: 0,
+        blitz: 0,
+        rapid: 0
+      },
+      profilePic: response.user.profilePic || '/default-user.png'
+    });
+  } catch (error) {
+    console.error('Failed to fetch user details:', error);
+    setError(error.message || 'Failed to fetch user details');
+  } finally {
+    setLoading(false);
+  }
+};
 
-  const fetchRecentMatches = async () => {
-    try {
-      const response = await getAllGamesByUser(userId);
-      setRecentMatches(response.games);
-    } catch (error) {
-      console.error('Failed to fetch recent matches:', error);
-      setError('Failed to fetch recent matches. Please try again later.');
+const fetchRecentMatches = async () => {
+  try {
+    const response = await getAllGamesByUser(userId);
+    const games = response?.games || [];
+    // Add null check for response and response.games
+    if (!response || !response.games) {
+      throw new Error('No games data received');
     }
-  };
+
+    setRecentMatches(games);
+    
+    if (games.length === 0) {
+      console.log('No recent matches found');
+      // You could set a state here to show "No matches found" in UI
+    }
+
+  } catch (error) {
+    console.error('Failed to fetch recent matches:', error);
+    setError('Failed to fetch recent matches. Please try again later.');
+    setRecentMatches([]); // Set to empty array on error
+  }
+};
 
   const handleTimeControlClick = (timeControl) => {
     setSelectedTimeControl(timeControl);

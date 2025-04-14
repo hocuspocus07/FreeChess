@@ -60,6 +60,9 @@ export const getUserDetails = async (userId) => {
 export const getAllGamesByUser=async (userId)=>{
   try {
     const response=await axios.get(`${API_BASE_URL}/chess/game/user/${userId}`);
+    if (response.status === 404) {
+      return { games: [] }; // Return empty array for 404
+    }
     return response.data;
   } catch (error) {
     throw error.response.data;
@@ -70,7 +73,8 @@ export const createGame = async (gameData) => {
   try {
     const response = await axios.post(`${API_BASE_URL}/chess/game/create`, gameData, {
       headers: {
-        Authorization: `Bearer ${localStorage.getItem('token')}`,
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
       },
     });
     return response.data;
@@ -81,10 +85,24 @@ export const createGame = async (gameData) => {
 
 export const getGameDetails = async (gameId) => {
   try {
-    const response = await axios.get(`${API_BASE_URL}/chess/game/${gameId}`);
-    return response.data;
+    const response = await fetch(`http://localhost:8000/chess/game/${gameId}`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
+    });
+
+    if (!response.ok) {
+      // Return null for 404 errors
+      if (response.status === 404) {
+        return { game: null };
+      }
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    return await response.json();
   } catch (error) {
-    throw error.response.data;
+    console.error('Error fetching game details:', error);
+    return { game: null };
   }
 };
 

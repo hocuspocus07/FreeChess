@@ -11,6 +11,7 @@ const navigationList = [
   { name: 'Register', href: '/register', current: false },
   { name: 'Login', href: '/login', current: false },
   {name:'Play A Bot',href:'/play-bot',current:false},
+  {name:'Multiplayer',href:'/play-online',current:false},
 ];
 
 function classNames(...classes) {
