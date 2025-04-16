@@ -1,68 +1,102 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 
-const MoveLog = ({ moveLog, currentMoveIndex, checkOutMove, isMobile }) => {
-  const formatMoveLog = () => {
-    const formattedMoves = [];
-    for (let i = 0; i < moveLog.length; i += 2) {
-      const moveNumber = Math.floor(i / 2) + 1;
-      const whiteMove = moveLog[i];
-      const blackMove = moveLog[i + 1] || '';
-      formattedMoves.push(`${moveNumber}. ${whiteMove} ${blackMove}`);
+const MoveLog = ({ moveHistory, currentMoveIndex, checkOutMove, isMobile = false }) => {
+  const moveLogRef = useRef(null);
+
+  useEffect(() => {
+    if (moveLogRef.current && !isMobile) {
+      moveLogRef.current.scrollTop = moveLogRef.current.scrollHeight;
     }
-    return formattedMoves;
+  }, [moveHistory, isMobile]);
+
+  // Desktop View - Proper highlighting
+  const renderDesktopView = () => {
+    return (
+      <div className="w-full lg:w-64 bg-gray-800 rounded-lg overflow-hidden shadow-lg sm:flex hidden flex-col">
+        <div className="p-3 bg-gray-700 border-b border-gray-600">
+          <h2 className="font-medium text-white">Move History</h2>
+        </div>
+        <div ref={moveLogRef} className="h-64 md:h-[28rem] overflow-y-auto p-3 font-mono text-sm">
+          {moveHistory.length === 0 ? (
+            <p className="text-gray-400 text-center py-4">No moves yet</p>
+          ) : (
+            <table className="w-full">
+              <thead>
+                <tr className="text-gray-400 border-b border-gray-700">
+                  <th className="text-left pb-1">#</th>
+                  <th className="text-left pb-1">White</th>
+                  <th className="text-left pb-1">Black</th>
+                </tr>
+              </thead>
+              <tbody>
+                {moveHistory.map((move, index) => (
+                  <tr 
+                    key={index} 
+                    className={`border-b border-gray-700 ${
+                      (currentMoveIndex === index * 2 && move.white) || 
+                      (currentMoveIndex === index * 2 + 1 && move.black) ? 
+                      'bg-gray-700' : ''
+                    }`}
+                  >
+                    <td className="py-2 text-gray-400">{move.number}</td>
+                    <td 
+                      className={`py-2 ${
+                        move.white && move.player === localStorage.getItem('userId') ? 
+                        'text-indigo-300' : 'text-white'
+                      }`}
+                      onClick={() => move.white && checkOutMove(index * 2)}
+                    >
+                      {move.white || '-'}
+                    </td>
+                    <td 
+                      className={`py-2 ${
+                        move.black && move.player === localStorage.getItem('userId') ? 
+                        'text-indigo-300' : 'text-white'
+                      }`}
+                      onClick={() => move.black && checkOutMove(index * 2 + 1)}
+                    >
+                      {move.black || '-'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+    );
   };
 
-  return (
-    <div className={`${isMobile ? 'h-6 w-screen flex bg-gray-800 text-white overflow-x-scroll md:hidden' : 'bg-gray-900 rounded-lg p-6 sm:flex hidden flex-col text-white h-full'}`}>
-      {!isMobile && <h3 className="text-lg font-bold mb-4">Move Log</h3>}
-      <div className={`${isMobile ? 'flex' : 'overflow-y-auto h-96 p-2 rounded scrollbar-custom'}`}>
-        {formatMoveLog().map((movePair, pairIndex) => {
-          const moves = movePair.split(" ");
-          return (
-            <React.Fragment key={pairIndex}>
-              {!isMobile && (
-                <div className='flex items-center justify-center m-2 bg-gray-400 p-1 rounded-xl'>
-                  <div className="bg-[#2a2a2a] rounded mx-1 px-1 cursor-default">
-                    <p className="text-gray-400">{moves[0]}</p>
-                  </div>
-                  {moves.slice(1).map((move, moveOffset) => {
-                    const moveIndex = pairIndex * 2 + moveOffset;
-                    return (
-                      <div
-                        key={`${pairIndex}-${moveOffset}`}
-                        onClick={() => checkOutMove(moveIndex)}
-                        className={`bg-[#3a3a3a] rounded mx-1 px-1 cursor-pointer ${currentMoveIndex === moveIndex ? "border-2 border-yellow-400" : ""}`}
-                      >
-                        <span className="text-white">{move}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-              {isMobile && (
-                <div className="bg-[#2a2a2a] rounded mx-1 px-1 cursor-default">
-                  <span className="text-gray-500">{moves[0]}</span>
-                </div>
-              )}
-              {isMobile &&
-                moves.slice(1).map((move, moveOffset) => {
-                  const moveIndex = pairIndex * 2 + moveOffset;
-                  return (
-                    <div
-                      key={`${pairIndex}-${moveOffset}`}
-                      onClick={() => checkOutMove(moveIndex)}
-                      className={`bg-[#3a3a3a] rounded mx-1 px-1 cursor-pointer ${currentMoveIndex === moveIndex ? "border-2 border-yellow-400" : ""}`}
-                    >
-                      <span className="text-white font-bold">{move}</span>
-                    </div>
-                  );
-                })}
-            </React.Fragment>
-          );
-        })}
+  // Mobile View - Proper highlighting
+  const renderMobileView = () => {
+    const flatMoves = [];
+    moveHistory.forEach(move => {
+      if (move.white) flatMoves.push({ san: move.white, index: flatMoves.length });
+      if (move.black) flatMoves.push({ san: move.black, index: flatMoves.length });
+    });
+
+    return (
+      <div className="h-6 w-screen flex bg-gray-800 text-white overflow-x-scroll md:hidden">
+        <div className="flex">
+          {flatMoves.map((move, i) => (
+            <div
+              key={i}
+              onClick={() => checkOutMove(i)}
+              className={`bg-[#3a3a3a] rounded mx-1 px-1 cursor-pointer ${
+                currentMoveIndex === i ? "border-2 border-yellow-400" : ""
+              }`}
+            >
+              <span className="text-white font-bold">
+                {Math.floor(i / 2) + 1}.{i % 2 === 0 ? '' : '..'} {move.san}
+              </span>
+            </div>
+          ))}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
+
+  return isMobile ? renderMobileView() : renderDesktopView();
 };
 
 export default MoveLog;

@@ -75,7 +75,13 @@ io.on("connection", (socket) => {
     console.log(`User ${userId} joined matchmaking`);
 
     if (waitingPlayers.has(userId)) {
-      return socket.emit('error', { message: 'Already in matchmaking' });
+      const oldSocket = waitingPlayers.get(userId);
+      if (oldSocket.id !== socket.id) {
+        oldSocket.emit('removedFromMatchmaking');
+        waitingPlayers.delete(userId);
+      } else {
+        return socket.emit('error', { message: 'Already in matchmaking' });
+      }
     }
 
     // Try to find a match
@@ -125,31 +131,25 @@ io.on("connection", (socket) => {
     socket.emit('waitingForOpponent');
   });
 
-  socket.on('makeMove', async ({ gameId, move }) => {
+  socket.on('makeMove', async ({ gameId, move, fen, currentTurn, moveHistory }) => {
+    const game = activeGames.get(gameId);
+    if (!game) return;
+  
     try {
-      const game = activeGames.get(gameId);
-      if (!game) return socket.emit('error', { message: 'Game not found' });
-
-      // Validate against current game state
       const moveObj = game.chess.move(move);
       if (!moveObj) return socket.emit('invalidMove', { message: 'Invalid move' });
-
-      // Update turn
-      game.currentTurn = game.chess.turn() === 'w' ? game.player1 : game.player2;
+  
+      game.currentTurn = game.chess.turn() === 'w' ? 'w' : 'b';
       
-      // Broadcast to ALL players in the game room
       io.to(gameId).emit('moveMade', {
         move: moveObj.san,
         fen: game.chess.fen(),
-        currentTurn: game.currentTurn
+        currentTurn: game.currentTurn,
+        moveHistory
       });
-
-      // Save move to database
-      const moveNumber = game.chess.history().length;
-      await Game.saveMove(gameId, socket.user._id, moveNumber, moveObj.san);
-
+  
+      await Game.saveMove(gameId, socket.user._id, game.chess.history().length, moveObj.san);
     } catch (error) {
-      console.error('Move processing error:', error);
       socket.emit('error', { message: 'Move processing failed' });
     }
   });
@@ -177,12 +177,41 @@ socket.on('restoreGame', async ({ gameId }) => {
     }
 });
 
+// In your server code where you handle gameOver events
+// In your server's gameOver handler:
+socket.on('gameOver', async ({ gameId, winnerId }) => {
+  const game = activeGames.get(gameId);
+  if (!game) return;
+
+  // Verify the winner based on game state
+  const chess = game.chess;
+  let verifiedWinnerId = winnerId;
+  const status = verifiedWinnerId === 'draw' ? 'draw' : 'completed';
+  
+  if (chess.isCheckmate()) {
+    const winnerColor = chess.turn() === 'w' ? 'black' : 'white';
+    verifiedWinnerId = winnerColor === 'white' ? game.player1 : game.player2;
+  } else if (chess.isDraw()) {
+    verifiedWinnerId = null;
+  }
+
+  // Save to database
+  await Game.setWinner(gameId, verifiedWinnerId);
+  await Game.endGame(gameId);
+  await Game.updateStatus(gameId,status)
+  
+  // Broadcast to all players
+  io.to(gameId).emit('gameEnded', { winnerId: verifiedWinnerId });
+  activeGames.delete(gameId);
+});
 
   // Disconnection handler
   socket.on('disconnect', () => {
-    console.log(`User disconnected: ${socket.id}`);
     if (socket.user) {
-      waitingPlayers.delete(socket.user._id.toString());
+      const userId = socket.user._id.toString();
+      if (waitingPlayers.get(userId)?.id === socket.id) {
+        waitingPlayers.delete(userId);
+      }
     }
   });
 });

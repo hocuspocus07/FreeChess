@@ -10,6 +10,7 @@ import UserProfile from './pages/UserProfile.jsx';
 import HowToPlay from './pages/HowToPlay.jsx';
 import PlayBot from './pages/PlayBot.jsx';
 import ReplayGame from './components/ReplayGame.jsx';
+import PlayOnline from './pages/PlayOnline.jsx';
 import MultiPlayer from './pages/MultiPlayer.jsx';
 
 function App() {
@@ -28,7 +29,8 @@ function App() {
         <Route path="/play-bot" element={<PlayBot />} />
         <Route path="/game/bot" element={<GamePage />} />
         <Route path="/replay/:gameId" element={<ReplayGame />} />
-        <Route path='/play-online' element={<MultiPlayer/>}/>
+        <Route path='/play-online' element={<PlayOnline/>}/>
+        <Route path='/multiplayer' element={<MultiPlayer/>}/>
       </Routes>
     </Router>
   )
