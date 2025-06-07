@@ -1,22 +1,24 @@
 import React, { useRef, useEffect } from 'react';
 
-const MoveLog = ({ moveHistory, currentMoveIndex, checkOutMove, isMobile = false }) => {
+const MoveLog = ({ moveHistory = [], currentMoveIndex, checkOutMove, isMobile = false }) => {
   const moveLogRef = useRef(null);
 
   useEffect(() => {
-    if (moveLogRef.current && !isMobile) {
-      moveLogRef.current.scrollTop = moveLogRef.current.scrollHeight;
+    if (!isMobile && moveLogRef.current) {
+      const activeEl = moveLogRef.current.querySelector('.highlighted');
+      if (activeEl) {
+        activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
     }
-  }, [moveHistory, isMobile]);
+  }, [currentMoveIndex, isMobile]);
 
-  // Desktop View - Proper highlighting
   const renderDesktopView = () => {
     return (
       <div className="w-full lg:w-64 bg-gray-800 rounded-lg overflow-hidden shadow-lg sm:flex hidden flex-col">
         <div className="p-3 bg-gray-700 border-b border-gray-600">
           <h2 className="font-medium text-white">Move History</h2>
         </div>
-        <div ref={moveLogRef} className="h-64 md:h-[28rem] overflow-y-auto p-3 font-mono text-sm">
+        <div ref={moveLogRef} className="h-64 md:h-[28rem] overflow-y-auto p-3 font-mono text-sm scrollbar-custom">
           {moveHistory.length === 0 ? (
             <p className="text-gray-400 text-center py-4">No moves yet</p>
           ) : (
@@ -30,33 +32,32 @@ const MoveLog = ({ moveHistory, currentMoveIndex, checkOutMove, isMobile = false
               </thead>
               <tbody>
                 {moveHistory.map((move, index) => (
-                  <tr 
-                    key={index} 
-                    className={`border-b border-gray-700 ${
-                      (currentMoveIndex === index * 2 && move.white) || 
-                      (currentMoveIndex === index * 2 + 1 && move.black) ? 
+                  <tr
+                    key={index}
+                    className={`border-b border-gray-700 ${(currentMoveIndex === index * 2 && move.white) ||
+                      (currentMoveIndex === index * 2 + 1 && move.black) ?
                       'bg-gray-700' : ''
-                    }`}
+                      }`}
                   >
                     <td className="py-2 text-gray-400">{move.number}</td>
-                    <td 
-                      className={`py-2 ${
-                        move.white && move.player === localStorage.getItem('userId') ? 
-                        'text-indigo-300' : 'text-white'
-                      }`}
+                    <td
+                      className={`py-2 cursor-pointer ${currentMoveIndex === index * 2 ? 'bg-yellow-500 text-black highlighted' : ''
+                        } ${move.white && move.player === localStorage.getItem('userId') ?
+                          'text-indigo-300' : 'text-white'}`}
                       onClick={() => move.white && checkOutMove(index * 2)}
                     >
                       {move.white || '-'}
                     </td>
-                    <td 
-                      className={`py-2 ${
-                        move.black && move.player === localStorage.getItem('userId') ? 
-                        'text-indigo-300' : 'text-white'
-                      }`}
+{console.log('Move at index', index, move)}
+                    <td
+                      className={`py-2 cursor-pointer ${currentMoveIndex === index * 2 + 1 ? 'bg-yellow-500 text-black highlighted' : ''
+                        } ${move.black && move.player === localStorage.getItem('userId') ?
+                          'text-indigo-300' : 'text-white'}`}
                       onClick={() => move.black && checkOutMove(index * 2 + 1)}
                     >
                       {move.black || '-'}
                     </td>
+
                   </tr>
                 ))}
               </tbody>
@@ -67,34 +68,56 @@ const MoveLog = ({ moveHistory, currentMoveIndex, checkOutMove, isMobile = false
     );
   };
 
-  // Mobile View - Proper highlighting
   const renderMobileView = () => {
-    const flatMoves = [];
-    moveHistory.forEach(move => {
-      if (move.white) flatMoves.push({ san: move.white, index: flatMoves.length });
-      if (move.black) flatMoves.push({ san: move.black, index: flatMoves.length });
+    const pairs = [];
+
+    moveHistory.forEach((move, i) => {
+      pairs.push({
+        number: move.number,
+        white: move.white,
+        black: move.black,
+        whiteIndex: i * 2,
+        blackIndex: i * 2 + 1
+      });
     });
+    
+useEffect(() => {
+  if (moveLogRef.current) {
+    moveLogRef.current.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+  }
+}, [currentMoveIndex]);
 
     return (
-      <div className="h-6 w-screen flex bg-gray-800 text-white overflow-x-scroll md:hidden">
-        <div className="flex">
-          {flatMoves.map((move, i) => (
-            <div
-              key={i}
-              onClick={() => checkOutMove(i)}
-              className={`bg-[#3a3a3a] rounded mx-1 px-1 cursor-pointer ${
-                currentMoveIndex === i ? "border-2 border-yellow-400" : ""
-              }`}
-            >
-              <span className="text-white font-bold">
-                {Math.floor(i / 2) + 1}.{i % 2 === 0 ? '' : '..'} {move.san}
+      <div className="h-12 w-screen flex bg-gray-800 text-white overflow-x-auto md:hidden p-2">
+        <div className="flex gap-4">
+          {pairs.map((pair, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <span className="text-gray-400">{pair.number}.</span>
+              <span
+                ref={currentMoveIndex === pair.whiteIndex ? moveLogRef : null}
+                onClick={() => pair.white && checkOutMove(pair.whiteIndex)}
+                className={`cursor-pointer px-1 rounded ${currentMoveIndex === pair.whiteIndex ? "bg-yellow-500 text-black" : ""
+                  }`}
+              >
+                {pair.white || '-'}
               </span>
+
+              <span
+                ref={currentMoveIndex === pair.blackIndex ? moveLogRef : null}
+                onClick={() => pair.black && checkOutMove(pair.blackIndex)}
+                className={`cursor-pointer px-1 rounded ${currentMoveIndex === pair.blackIndex ? "bg-yellow-500 text-black" : ""
+                  }`}
+              >
+                {pair.black || '-'}
+              </span>
+
             </div>
           ))}
         </div>
       </div>
     );
   };
+
 
   return isMobile ? renderMobileView() : renderDesktopView();
 };

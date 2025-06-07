@@ -7,7 +7,7 @@ import { Chess} from 'chess.js'
 const STOCKFISH_PATH = 'C:/Users/Lenovo/Desktop/coding/FreeChess/backend/stockfish/stockfish.exe';
 
 export const createGame = async (req, res) => {
-    const { player1_id, player2_id,winner_id,status } = req.body;
+    const { player1_id, player2_id,winner_id,status,time_control } = req.body;
     const userId = req.user.id;
   
     if (userId != player1_id) {
@@ -15,8 +15,12 @@ export const createGame = async (req, res) => {
     }
   
     try {
-      const gameId = await Game.create(player1_id, player2_id,winner_id,status);
-      res.status(201).json({ message: 'Game created successfully', gameId });
+      const validTimeControls = [60, 180, 600];
+      const selectedTime = validTimeControls.includes(parseInt(time_control)) 
+        ? parseInt(time_control) 
+        : 600;
+      const gameId = await Game.create(player1_id, player2_id,winner_id,status,selectedTime);
+      res.status(201).json({ message: 'Game created successfully', gameId,time_control:selectedTime });
     } catch (error) {
       res.status(500).json({ error: 'Failed to create game', details: error.message });
     }
@@ -41,7 +45,7 @@ export const getGameDetails=async (req,res)=>{
 
 export const addMove = async (req, res) => {
   const { gameId } = req.params;
-  const { playerId, moveNumber, move } = req.body;
+  const { playerId, moveNumber, move,remainingTime } = req.body;
   const userId = req.user?.id; 
 
   console.log(`Attempting to add move: GameID=${gameId}, Player=${playerId}, Move=${move}`);
@@ -82,7 +86,7 @@ export const addMove = async (req, res) => {
       }
       console.log("Board state after move:", chess.ascii());
     });
-      await Move.create(gameId, playerId, moveNumber, move);
+      await Move.create(gameId, playerId, moveNumber, move,remainingTime);
 
       res.status(201).json({ message: "Move added successfully" });
 
@@ -168,7 +172,7 @@ export const endGame = async (req, res) => {
 };
 
 export const botMove = async (req, res) => {
-  const { fen, botRating, gameId, playerId } = req.body;
+  const { fen, botRating, gameId, playerId,remainingTime } = req.body;
   
   // Validate input
   if (!gameId || !playerId) {
@@ -241,7 +245,7 @@ export const botMove = async (req, res) => {
             }
           }
           
-          saveBotMove(gameId, playerId, bestMove)
+          saveBotMove(gameId, playerId, bestMove,remainingTime)
             .then(() => res.json({ move: bestMove }))
             .catch(error => {
               console.error('Save error:', error);
@@ -284,8 +288,9 @@ export const saveBotGame=async(req,res)=>{
   }
 }
 
-const saveBotMove = async (gameId, playerId, move) => {
+const saveBotMove = async (gameId, playerId, move,remainingTime) => {
   try {
+    const game = await Game.findById(gameId);
     console.log(`Attempting to save move: ${move}`);
 
     const moves = await Move.findByGameId(gameId);
@@ -332,8 +337,8 @@ const saveBotMove = async (gameId, playerId, move) => {
     if (!moveResult) {
       throw new Error('Failed to make move');
     }
-
-    await Move.create(gameId, playerId, moveNumber, moveResult.san);
+const timeToUse = remainingTime !== undefined ? remainingTime : 180;
+    await Move.create(gameId, playerId, moveNumber, moveResult.san,timeToUse);
     console.log(`Successfully saved move: ${moveResult.san}`);
     return moveResult.san;
 

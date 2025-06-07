@@ -6,6 +6,7 @@ import { saveMatch } from '../api.js';
 import UserInfo from './UserInfo.jsx';
 import MoveLog from './MoveLog.jsx';
 import PostGameCard from './PostGameCard.jsx';
+import MaterialAdvantage from './MaterialAdvantage.jsx';
 
 const ChessBoard = ({ isBotGame, botRating, timeControl, isViewOnly, gameId, userId, socket, player1_id, player2_id }) => {
   const [game, setGame] = useState(new Chess());
@@ -228,7 +229,7 @@ const ChessBoard = ({ isBotGame, botRating, timeControl, isViewOnly, gameId, use
         winnerId: winnerId,
         winType: winType,
         moves: moveLog,
-        gameId:gameId,
+        gameId: gameId,
       };
 
       setPostGameResult(gameResult);
@@ -252,7 +253,7 @@ const ChessBoard = ({ isBotGame, botRating, timeControl, isViewOnly, gameId, use
             },
             body: JSON.stringify(saveData),
           });
-  
+
           if (!response.ok) throw new Error('Failed to update game status');
           console.log('Game result saved successfully');
         } catch (error) {
@@ -276,7 +277,7 @@ const ChessBoard = ({ isBotGame, botRating, timeControl, isViewOnly, gameId, use
       if (!piece || piece.color !== activePlayer || currentMoveIndex !== moveLog.length - 1) {
         return false;
       }
-
+    const currentRemainingTime = activePlayer === 'w' ? whiteTime : blackTime;
       const gameCopy = new Chess(game.fen());
       const move = gameCopy.move({
         from: sourceSquare,
@@ -318,6 +319,7 @@ const ChessBoard = ({ isBotGame, botRating, timeControl, isViewOnly, gameId, use
         playerId,
         moveNumber: newMoveLog.length,
         move: move.san,
+        remainingTime: currentRemainingTime,
       };
 
       console.log("🔹 Sending move data:", moveData);
@@ -400,12 +402,17 @@ const ChessBoard = ({ isBotGame, botRating, timeControl, isViewOnly, gameId, use
           <UserInfo
             playerName="Player 1"
             playerRating="1600"
-            capturedPieces={capturedPieces.white}
-            materialAdvantage={materialAdvantage < 0 ? -materialAdvantage : 0}
-            time={blackTime}
+            isTopPlayer={true}
             isBot={isBotGame}
             botRating={botRating}
+            time={blackTime} 
           />
+          <MaterialAdvantage
+            capturedPieces={capturedPieces}
+            materialAdvantage={materialAdvantage < 0 ? -materialAdvantage : 0}
+            isTopPlayer={true}
+          />
+
           <div className='h-6 w-screen flex bg-gray-800 text-white overflow-x-scroll md:hidden'>
             <MoveLog
               moveLog={moveLog}
@@ -421,13 +428,17 @@ const ChessBoard = ({ isBotGame, botRating, timeControl, isViewOnly, gameId, use
               arePiecesDraggable={!isViewOnly && !gameOver && currentMoveIndex === moveLog.length - 1}
             />
           </div>
+          <MaterialAdvantage
+            capturedPieces={capturedPieces}
+            materialAdvantage={materialAdvantage > 0 ? materialAdvantage : 0}
+            isTopPlayer={false}
+          />
           <UserInfo
             playerName="Player 2"
             playerRating="1600"
-            capturedPieces={capturedPieces.black}
-            materialAdvantage={materialAdvantage > 0 ? materialAdvantage : 0}
-            time={whiteTime}
+            isTopPlayer={false}
             isBot={false}
+            time={whiteTime}  
           />
         </div>
         <div className='flex flex-col w-1/4 h-full'>

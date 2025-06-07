@@ -8,6 +8,7 @@ import {
   removeCircleOutline,
   reorderTwoOutline,
 } from 'ionicons/icons';
+import { getGameDetails } from '../api.js';
 
 const RecentMatchesTable = ({
   matches = [],
@@ -31,14 +32,12 @@ const RecentMatchesTable = ({
   ];
 
   const getTimeControl = (match) => {
-    const startTime = new Date(match.start_time).getTime();
-    const endTime = new Date(match.end_time).getTime();
-    const durationInSeconds = (endTime - startTime) / 1000;
+  const durationInSeconds = match.time_control;
+  if (durationInSeconds === 60) return 'bullet';
+  if (durationInSeconds === 180) return 'blitz';
+  return 'rapid';
+};
 
-    if (durationInSeconds < 180) return 'bullet';
-    if (durationInSeconds >= 180 && durationInSeconds <= 600) return 'blitz';
-    return 'rapid';
-  };
 
   const filteredMatches = selectedTimeControl
     ? matches.filter((match) => getTimeControl(match) === selectedTimeControl)
@@ -95,15 +94,15 @@ const RecentMatchesTable = ({
           <tbody>
             {filteredMatches.slice(0, visibleMatches).map((match, index) => {
               const result =
-              match.status === 'draw' || match.result === 'Draw'
-              ? 'Draw'
-              : match.winner_id === null
-                ? 'Draw'
-                : (typeof match.winner_id === 'object' 
-                    ? match.winner_id.id 
-                    : match.winner_id).toString() === profileUserId.toString()
-                  ? 'Win'
-                  : 'Loss';
+                match.status === 'draw' || match.result === 'Draw'
+                  ? 'Draw'
+                  : match.winner_id === null
+                    ? 'Draw'
+                    : (typeof match.winner_id === 'object'
+                      ? match.winner_id.id
+                      : match.winner_id).toString() === profileUserId.toString()
+                      ? 'Win'
+                      : 'Loss';
               const timeControl = getTimeControl(match);
               const timeControlData = timeControlType.find((item) => item[timeControl]);
               const timeControlIcon = timeControlData ? timeControlData[timeControl] : null;
@@ -119,10 +118,10 @@ const RecentMatchesTable = ({
                   <td className="px-4 py-3 text-center">
                     <span
                       className={`px-3 py-1 rounded-full text-xl font-extrabold ${result === 'Win'
-                          ? 'bg-[#7fa650] text-white'
-                          : result === 'Loss'
-                            ? 'bg-[#dc3545] text-white'
-                            : 'bg-[#ffc107] text-black'
+                        ? 'bg-[#7fa650] text-white'
+                        : result === 'Loss'
+                          ? 'bg-[#dc3545] text-white'
+                          : 'bg-[#ffc107] text-black'
                         }`}
                     >
                       {resultList[result]}

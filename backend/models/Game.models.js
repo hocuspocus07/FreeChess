@@ -1,13 +1,20 @@
 import { pool } from "../config/db.js";
 import { Chess } from "chess.js";
 class Game{
-    static async create(player1_id,player2_id,winner_id,status){
+    static async create(player1_id,player2_id,winner_id,status,time_control){
         const [result]=await pool.query(
-            'INSERT INTO games(player1_id,player2_id,winner_id,status) VALUES (?,?,?,?)',
-            [player1_id,player2_id,winner_id,status]
+            'INSERT INTO games(player1_id,player2_id,winner_id,status,time_control) VALUES (?,?,?,?,?)',
+            [player1_id,player2_id,winner_id,status,time_control]
         );
         return result.insertId;
     }
+static async getTimeControl(gameId) {
+    const [rows] = await pool.query(
+        'SELECT time_control FROM games WHERE id = ?', 
+        [gameId]
+    );
+    return rows[0]?.time_control || 600;
+}
 
     static async update(gameId, updateFields) {
       const query = 'UPDATE games SET ? WHERE id = ?';
@@ -92,10 +99,10 @@ class Game{
             return result;
           }
 
-          static async saveMove(gameId, playerId, moveNumber, move) {
+          static async saveMove(gameId, playerId, moveNumber, move,remainingTime = 600) {
             await pool.query(
-                "INSERT INTO moves (game_id, player_id, move_number, move) VALUES (?, ?, ?, ?)",
-                [gameId, playerId, moveNumber, move]
+                "INSERT INTO moves (game_id, player_id, move_number, move,remaining_time) VALUES (?, ?, ?, ?,?)",
+                [gameId, playerId, moveNumber, move,remainingTime]
             );
         }
     

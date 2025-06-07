@@ -5,6 +5,8 @@ import { io } from 'socket.io-client';
 import { useNavigate } from 'react-router-dom';
 import { refreshAccessToken } from '../api.js';
 import MoveLog from '../components/MoveLog.jsx';
+import MaterialAdvantage from '../components/MaterialAdvantage.jsx';
+import UserInfo from '../components/UserInfo.jsx';
 
 const PlayOnline = () => {
   const [game, setGame] = useState(new Chess());
@@ -22,18 +24,73 @@ const PlayOnline = () => {
   const [currentMoveIndex, setCurrentMoveIndex] = useState(-1);
   const [showWaitingModal, setShowWaitingModal] = useState(true);
   const gameEndedRef = useRef(false);
+  const [whiteTime, setWhiteTime] = useState(10 * 60);
+  const [blackTime, setBlackTime] = useState(10 * 60);
+  const [lastMoveTime, setLastMoveTime] = useState(Date.now());
+  const [timerInterval, setTimerInterval] = useState(null);
+  const [hasJoinedQueue, setHasJoinedQueue] = useState(false);
+
+useEffect(() => {
+  if (!socket) return;
+
+  if (hasJoinedQueue) {
+    socket.emit('joinMatchmaking');
+    setStatus('waiting');
+    setShowWaitingModal(true);
+  }
+}, [socket, hasJoinedQueue]);
+
+  useEffect(() => {
+    if (status !== 'active') {
+      if (timerInterval) clearInterval(timerInterval);
+      return;
+    }
+
+    const interval = setInterval(() => {
+      const now = Date.now();
+      const elapsedSeconds = Math.floor((now - lastMoveTime) / 1000); // Convert to seconds
+
+      if (elapsedSeconds <= 0) return; // No time elapsed
+
+      if (game.turn() === 'w') {
+        setWhiteTime(prev => Math.max(0, prev - elapsedSeconds));
+      } else {
+        setBlackTime(prev => Math.max(0, prev - elapsedSeconds));
+      }
+
+      setLastMoveTime(now);
+
+      if (whiteTime <= 0 || blackTime <= 0) {
+        clearInterval(interval);
+        const winnerId = whiteTime <= 0 ? opponentId : userId;
+        socket.emit('gameOver', {
+          gameId,
+          winnerId,
+          reason: 'timeout'
+        });
+        setStatus('ended');
+      }
+    }, 1000);
+
+    setTimerInterval(interval);
+    return () => clearInterval(interval);
+  }, [status, game, lastMoveTime, whiteTime, blackTime]);
 
   const checkOutMove = (index) => {
-      const gameCopy = new Chess();
-      moveHistory.slice(0, index + 1).forEach((move) => gameCopy.move(move));
-      setGame(gameCopy);
-      setCurrentMoveIndex(index);
-    };
-    useEffect(() => {
-      if (status === 'active') {
-        gameEndedRef.current = false;
-      }
-    }, [status]);
+    const gameCopy = new Chess();
+    moveHistory.slice(0, index + 1).forEach((entry) => {
+      if (entry.white) gameCopy.move(entry.white);
+      if (entry.black) gameCopy.move(entry.black);
+    });
+
+    setGame(gameCopy);
+    setCurrentMoveIndex(index);
+  };
+  useEffect(() => {
+    if (status === 'active') {
+      gameEndedRef.current = false;
+    }
+  }, [status]);
 
   const getGameState = (game) => {
     return {
@@ -48,89 +105,62 @@ const PlayOnline = () => {
       moves: game.history({ verbose: true }),
     };
   };
-  useEffect(() => {
-    if (!socket) return;
+useEffect(() => {
+  if (!socket) return;
 
-    const handleMoveMade = ({ move, fen, currentTurn, moveHistory: serverMoveHistory }) => {
-      try {
-        const newGame = new Chess(fen);
-        setGame(newGame);
-        setCurrentTurn(currentTurn === 'w' ? 'white' : 'black');
-    
-        if (serverMoveHistory) {
-          setMoveHistory(serverMoveHistory);
-          const totalMoves = newGame.history().length;
-      setCurrentMoveIndex(totalMoves - 1);
-        } else {
-          console.warn('No move history from server, reconstructing locally');
-          const moveObj = newGame.history({ verbose: true }).pop();
-          if (moveObj) {
-            setMoveHistory(prev => {
-              const newHistory = [...prev];
-              const moveNumber = Math.ceil((newHistory.length + 1) / 2);
-              
-              if (moveObj.color === 'w') {
-                if (newHistory.length > 0 && !newHistory[newHistory.length - 1].white) {
-                  newHistory[newHistory.length - 1].white = moveObj.san;
-                  newHistory[newHistory.length - 1].player = opponentId;
-                  newHistory[newHistory.length - 1].color = 'white';
-                } else {
-                  newHistory.push({
-                    number: moveNumber,
-                    white: moveObj.san,
-                    black: '',
-                    player: opponentId,
-                    color: 'white'
-                  });
-                }
-              } else {
-                if (newHistory.length > 0 && !newHistory[newHistory.length - 1].black) {
-                  newHistory[newHistory.length - 1].black = moveObj.san;
-                  newHistory[newHistory.length - 1].player = opponentId;
-                  newHistory[newHistory.length - 1].color = 'black';
-                } else {
-                  newHistory.push({
-                    number: moveNumber,
-                    white: '',
-                    black: moveObj.san,
-                    player: opponentId,
-                    color: 'black'
-                  });
-                }
-              }
-              
-              setCurrentMoveIndex(newHistory.length - 1);
-              return newHistory;
-            });
-          }
-        }
-    
-        const gameState = getGameState(newGame);
-        if (gameState.isGameOver) {
-          const winnerId = gameState.isCheckmate 
-            ? (gameState.turn === 'w' ? opponentId : userId)
-            : 'draw';
-          socket.emit('gameOver', { 
-            gameId, 
-            winnerId,
-            moveHistory: serverMoveHistory || moveHistory 
-          });
-          setStatus('ended');
-        }
-      } catch (error) {
-        console.error('Error updating game:', error);
-        socket.emit('moveHistoryError', { 
-          message: 'Failed to process move history',
-          gameId
+  const handleMoveMade = ({ move, fen, currentTurn, moveHistory: serverMoveHistory }) => {
+    try {
+      const newGame = new Chess(fen);
+      setGame(newGame);
+      setCurrentTurn(currentTurn === 'w' ? 'white' : 'black');
+
+      if (timeRemaining) {
+      setWhiteTime(timeRemaining.white);
+      setBlackTime(timeRemaining.black);
+      setLastMoveTime(Date.now());
+    }
+
+      let updatedMoveHistory = [];
+    const moves = Array.isArray(serverMoveHistory) ? serverMoveHistory : newGame.history();
+    for (let i = 0; i < moves.length; i += 2) {
+      updatedMoveHistory.push({
+        number: Math.floor(i / 2) + 1,
+        white: moves[i] || '',
+        black: moves[i + 1] || '',
+      });
+    }
+      setMoveHistory(updatedMoveHistory);
+      setCurrentMoveIndex(updatedMoveHistory.length - 1);
+
+      const gameState = getGameState(newGame);
+      if (gameState.isGameOver) {
+        setTimeout(() => {
+        const winnerId = gameState.isCheckmate
+          ? (gameState.turn === 'w' ? opponentId : userId)
+          : 'draw';
+        socket.emit('gameOver', {
+          gameId,
+          winnerId,
+          moveHistory: updatedMoveHistory
         });
+        setStatus('ended');
+      }, 1000);
       }
-    };
+    } catch (error) {
+      console.error('Error updating game:', error);
+      socket.emit('moveHistoryError', {
+        message: 'Failed to process move history',
+        gameId
+      });
+    }
+  };
 
-    socket.on('moveMade', handleMoveMade);
-    return () => {
-      socket.off('moveMade', handleMoveMade);
-    };
-  }, [socket, gameId, userId, opponentId]);
+  socket.on('moveMade', handleMoveMade);
+  return () => {
+    socket.off('moveMade', handleMoveMade);
+  };
+}, [socket, gameId, userId, opponentId]);
+
 
   useEffect(() => {
     const initializeConnection = async () => {
@@ -152,7 +182,6 @@ const PlayOnline = () => {
           console.log('Socket connected');
           setStatus('waiting');
           setShowWaitingModal(true);
-          newSocket.emit('joinMatchmaking');
         });
 
         newSocket.on('gameAssigned', ({ gameId, isWhite, opponentId, initialFen }) => {
@@ -170,6 +199,9 @@ const PlayOnline = () => {
           setMoveHistory([]);
           setCurrentMoveIndex(-1);
 
+          setWhiteTime(10 * 60);
+          setBlackTime(10 * 60);
+          setLastMoveTime(Date.now());
           newSocket.emit('joinGame', { gameId });
         });
 
@@ -182,11 +214,13 @@ const PlayOnline = () => {
           console.log('Game ready:', gameId);
           setGameId(gameId);
           setPlayerColor(isWhite ? 'white' : 'black');
+          setOpponentId(opponentId);
 
-          // Initialize game
           const newGame = new Chess(initialFen);
           setGame(newGame);
           setStatus('active');
+          setMoveHistory([]);
+          setCurrentMoveIndex(-1);
         });
 
         newSocket.on('invalidMove', ({ message }) => {
@@ -255,22 +289,34 @@ const PlayOnline = () => {
 
       if (!move) return false;
 
-      const newGame = new Chess(game.fen());
+      const now = Date.now();
+      const elapsedSeconds = Math.floor((now - lastMoveTime) / 1000);
 
-      const newMoveHistory = [...moveHistory];
-      const moveNumber = Math.ceil((newMoveHistory.length + 1) / 2);
-const totalMoves = newGame.history().length;
-    setCurrentMoveIndex(totalMoves - 1);
+      if (move.color === 'w') {
+        setBlackTime(prev => Math.max(0, prev - elapsedSeconds));
+      } else {
+        setWhiteTime(prev => Math.max(0, prev - elapsedSeconds));
+      }
+
+      setLastMoveTime(now);
+      const newGame = new Chess(game.fen());
+      const totalMoves = newGame.history().length;
+      const moveNumber = Math.ceil((totalMoves) / 2);
+
       setGame(newGame);
       setCurrentTurn(newGame.turn());
-      setMoveHistory(newMoveHistory);
-    setCurrentMoveIndex(newMoveHistory.length - 1);
-      
+      setCurrentMoveIndex(totalMoves - 1);
+
+      const newMoveHistory = [...moveHistory];
+
+      const lastEntry = newMoveHistory[newMoveHistory.length - 1];
+      const isLastEntryValidObject = typeof lastEntry === 'object' && lastEntry !== null;
+
       if (move.color === 'w') {
-        if (newMoveHistory.length > 0 && !newMoveHistory[newMoveHistory.length - 1].white) {
-          newMoveHistory[newMoveHistory.length - 1].white = move.san;
-          newMoveHistory[newMoveHistory.length - 1].player = userId;
-          newMoveHistory[newMoveHistory.length - 1].color = 'white';
+        if (isLastEntryValidObject && !lastEntry.white) {
+          lastEntry.white = move.san;
+          lastEntry.player = userId;
+          lastEntry.color = 'white';
         } else {
           newMoveHistory.push({
             number: moveNumber,
@@ -281,10 +327,10 @@ const totalMoves = newGame.history().length;
           });
         }
       } else {
-        if (newMoveHistory.length > 0 && !newMoveHistory[newMoveHistory.length - 1].black) {
-          newMoveHistory[newMoveHistory.length - 1].black = move.san;
-          newMoveHistory[newMoveHistory.length - 1].player = userId;
-          newMoveHistory[newMoveHistory.length - 1].color = 'black';
+        if (isLastEntryValidObject && !lastEntry.black) {
+          lastEntry.black = move.san;
+          lastEntry.player = userId;
+          lastEntry.color = 'black';
         } else {
           newMoveHistory.push({
             number: moveNumber,
@@ -295,13 +341,27 @@ const totalMoves = newGame.history().length;
           });
         }
       }
-  
+
       setMoveHistory(newMoveHistory);
-  
 
       console.log('Move made:', move.san);
       const gameState = getGameState(newGame);
       console.log('New game state:', gameState);
+
+      // Emit move to server
+      socket.emit('makeMove', {
+        gameId,
+        move: move.san,
+        moveHistory: newMoveHistory,
+        fen: newGame.fen(),
+        currentTurn: newGame.turn(),
+        timeRemaining: {
+          white: whiteTime,
+          black: blackTime
+        }
+      });
+
+      // Game over logic
       if (gameState.isGameOver) {
         console.log('GAME OVER DETECTED');
         const winnerId = gameState.isCheckmate
@@ -313,26 +373,6 @@ const totalMoves = newGame.history().length;
         setStatus('ended');
       }
 
-      //send move to server
-      socket.emit('makeMove', {
-        gameId,
-        move: move.san,
-        moveHistory:newMoveHistory,
-        fen: newGame.fen(),
-      currentTurn: newGame.turn(),
-      });
-      if (gameState.isGameOver) {
-        const winnerColor = gameState.turn === 'w' ? 'black' : 'white';
-        const winnerId = winnerColor === playerColor ? userId : opponentId;
-        
-        console.log('Emitting gameOver with:', { gameId, winnerId });
-        socket.emit('gameOver', { 
-          gameId, 
-          winnerId,
-          moveHistory: newMoveHistory
-        });
-        setStatus('ended');
-      }
       return true;
     } catch (error) {
       console.error('Move error:', error);
@@ -340,27 +380,28 @@ const totalMoves = newGame.history().length;
     }
   }
 
+
   useEffect(() => {
     if (!socket) return;
 
     const handleGameEnd = async ({ winnerId }) => {
       if (gameEndedRef.current) return;
       gameEndedRef.current = true;
-      
+
       try {
         setStatus('ended');
-        
+
         // Get final game state to verify winner
         const gameState = getGameState(game);
         let finalWinnerId = winnerId;
-        
+
         if (gameState.isCheckmate) {
           const winnerColor = gameState.turn === 'w' ? 'black' : 'white';
           finalWinnerId = winnerColor === playerColor ? userId : opponentId;
         } else if (gameState.isDraw) {
           finalWinnerId = null;
         }
-    
+
         const response = await fetch(`http://localhost:8000/chess/game/${gameId}/end`, {
           method: 'POST',
           headers: {
@@ -372,15 +413,17 @@ const totalMoves = newGame.history().length;
             status: finalWinnerId ? 'completed' : 'draw'
           })
         });
-    
+
         const data = await response.json();
         if (!response.ok) throw new Error(data.message || 'Failed to save game result');
-    
-        const resultMessage = finalWinnerId 
+
+        const resultMessage = finalWinnerId
           ? (finalWinnerId === userId ? 'You won!' : 'You lost!')
           : 'Game ended in a draw!';
-        
-        alert(resultMessage);
+
+        setTimeout(() => {
+      alert(resultMessage);
+    }, 1000);
       } catch (error) {
         console.error('Error ending game:', error);
       }
@@ -405,25 +448,35 @@ const totalMoves = newGame.history().length;
 
   const handleResign = () => {
     if (window.confirm('Are you sure you want to resign?')) {
-      socket.emit('resignGame', { gameId });
+      socket.emit('resignGame', { 
+      gameId,
+      resignerId: userId 
+    });
       setStatus('ended');
     }
   };
 
   const renderStatusMessage = () => {
-    switch (status) {
-      case 'connecting':
-        return <p className="text-gray-300 animate-pulse">Connecting to server...</p>;
-      case 'waiting':
-        return (
-          <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 text-center max-w-md w-full">
-            <p className="text-lg font-medium text-white">Waiting for opponent...</p>
-            <div className="mt-2 h-1 w-full bg-gray-700 rounded-full overflow-hidden">
-              <div className="h-full bg-indigo-500 rounded-full animate-pulse" style={{ width: '70%' }}></div>
-            </div>
-            {gameId && <p className="mt-2 text-sm text-gray-400">Game ID: {gameId}</p>}
+  switch (status) {
+    case 'connecting':
+      return (
+        <button
+          className="bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium"
+          onClick={() => setHasJoinedQueue(true)}
+        >
+          Find Opponent
+        </button>
+      );
+    case 'waiting':
+      return (
+        <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 text-center max-w-md w-full">
+          <p className="text-lg font-medium text-white">Waiting for opponent...</p>
+          <div className="mt-2 h-1 w-full bg-gray-700 rounded-full overflow-hidden">
+            <div className="h-full bg-indigo-500 rounded-full animate-pulse" style={{ width: '70%' }}></div>
           </div>
-        );
+          {gameId && <p className="mt-2 text-sm text-gray-400">Game ID: {gameId}</p>}
+        </div>
+      );
       case 'active':
         return (
           <div className="bg-white/5 backdrop-blur-sm rounded-lg p-3 text-center">
@@ -443,7 +496,7 @@ const totalMoves = newGame.history().length;
     <div className="min-h-screen bg-gray-900 text-white p-4 md:p-6">
       <div className="max-w-7xl mx-auto">
         <header className="flex justify-between items-center mb-6">
-          <button 
+          <button
             onClick={() => navigate('/multiplayer')}
             className="flex items-center gap-1 text-indigo-400 hover:text-indigo-300 transition-colors"
           >
@@ -455,30 +508,59 @@ const totalMoves = newGame.history().length;
           <h1 className="text-xl md:text-2xl font-bold bg-gradient-to-r from-indigo-500 to-purple-600 bg-clip-text text-transparent">
             Online Chess
           </h1>
-          <div className="w-5"></div> 
+          <div className="w-5"></div>
         </header>
 
         <div className="flex flex-col lg:flex-row gap-6">
           <div className="flex-1 flex flex-col items-center">
             {renderStatusMessage()}
-            <div className='w-full'><MoveLog isMobile={true} moveHistory={moveHistory} currentMoveIndex={currentMoveIndex} checkOutMove={checkOutMove}/></div>
+            <div className='w-full'><MoveLog isMobile={true} moveHistory={moveHistory} currentMoveIndex={currentMoveIndex} checkOutMove={checkOutMove} /></div>
             <div className="w-full max-w-md aspect-square mt-4">
-              <Chessboard 
-                position={game.fen()} 
+              <div className="mb-2">
+                <UserInfo
+                  playerName={playerColor === 'white' ? 'Opponent' : 'You'}
+                  playerRating="1600"
+                  timeRemaining={playerColor === 'white' ? blackTime : whiteTime}
+                  isBot={false}
+                  isCurrentTurn={currentTurn !== playerColor}
+                />
+                <MaterialAdvantage
+                  capturedPieces={{
+                    white: [],
+                    black: []
+                  }}
+                  materialAdvantage={0}
+                  isTopPlayer={true}
+                />
+              </div>
+
+              <Chessboard
+                position={game.fen()}
                 onPieceDrop={onDrop}
                 boardOrientation={playerColor || 'white'}
-                areArrowsAllowed={true}
-                customBoardStyle={{
-                  borderRadius: '0.5rem',
-                  boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5)'
-                }}
-                customDarkSquareStyle={{ backgroundColor: '#4b5563' }}
-                customLightSquareStyle={{ backgroundColor: '#e5e7eb' }}
               />
+
+              <div className="mt-2">
+                <MaterialAdvantage
+                  capturedPieces={{
+                    white: [],
+                    black: []
+                  }}
+                  materialAdvantage={0}
+                  isTopPlayer={false}
+                />
+                <UserInfo
+                  playerName={playerColor === 'white' ? 'You' : 'Opponent'}
+                  playerRating="1600"
+                  timeRemaining={playerColor === 'white' ? whiteTime : blackTime}
+                  isBot={false}
+                  isCurrentTurn={currentTurn === playerColor}
+                />
+              </div>
             </div>
 
             {status === 'active' && (
-              <button 
+              <button
                 onClick={handleResign}
                 className="mt-4 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors shadow-md"
               >
@@ -488,13 +570,13 @@ const totalMoves = newGame.history().length;
 
             {status === 'ended' && (
               <div className="flex gap-3 mt-4">
-                <button 
+                <button
                   onClick={() => window.location.reload()}
                   className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors shadow-md"
                 >
                   Play Again
                 </button>
-                <button 
+                <button
                   onClick={() => navigate('/')}
                   className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors shadow-md"
                 >
@@ -504,11 +586,11 @@ const totalMoves = newGame.history().length;
             )}
           </div>
 
-          <MoveLog 
-  moveHistory={moveHistory}
-  currentMoveIndex={currentMoveIndex}
-  checkOutMove={checkOutMove}
-/>
+          <MoveLog
+            moveHistory={moveHistory}
+            currentMoveIndex={currentMoveIndex}
+            checkOutMove={checkOutMove}
+          />
         </div>
       </div>
     </div>

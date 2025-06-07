@@ -71,7 +71,11 @@ export const getAllGamesByUser=async (userId)=>{
 // Game Management
 export const createGame = async (gameData) => {
   try {
-    const response = await axios.post(`${API_BASE_URL}/chess/game/create`, gameData, {
+    const time_control = gameData.time_control || 600;
+    const response = await axios.post(`${API_BASE_URL}/chess/game/create`, {
+      ...gameData,
+      time_control
+    }, {
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -246,7 +250,7 @@ export const makeAuthenticatedRequest = async (requestFunction) => {
   }
 };
 
-export const saveMatch = async (status, winnerId,userId,moveLog) => {
+export const saveMatch = async (status, winnerId,userId,moveLog,time_control) => {
   try {
     const response = await fetch(`${API_BASE_URL}/chess/game/save-bot-match`, {
       method: 'POST',
@@ -260,6 +264,7 @@ export const saveMatch = async (status, winnerId,userId,moveLog) => {
         winner_id: winnerId, 
         status: status,
         moves: moveLog, 
+        time_control: time_control
       }),
     });
 

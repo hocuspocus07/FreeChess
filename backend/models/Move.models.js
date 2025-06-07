@@ -1,10 +1,10 @@
 import { pool } from "../config/db.js";
 
 class Move{
-  static async create(gameId, playerId, moveNumber, move) {
+  static async create(gameId, playerId, moveNumber, move,remainingTime) {
     const [result] = await pool.query(
-      'INSERT INTO moves (game_id, player_id, move_number, move) VALUES (?, ?, ?, ?)',
-      [gameId, playerId, moveNumber, move]
+      'INSERT INTO moves (game_id, player_id, move_number, move,remaining_time) VALUES (?, ?, ?, ?,?)',
+      [gameId, playerId, moveNumber, move,remainingTime]
     );
     return result.insertId;
   }

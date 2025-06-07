@@ -6,6 +6,12 @@ import NavBar from '../components/NavBar.jsx';
 import { refreshAccessToken } from '../api.js';
 
 const PlayBot = () => {
+  const TIME_CONTROLS = {
+    '1min': 60,
+    '3min': 180,
+    '10min': 600
+  };
+    const [selectedTimeControl, setSelectedTimeControl] = useState('3min');
   const [botRating, setBotRating] = useState(1500); 
   const [timeControl, setTimeControl] = useState(3);
   const navigate = useNavigate();
@@ -44,6 +50,7 @@ const PlayBot = () => {
         body: JSON.stringify({
           player1_id: userId,
           player2_id: -1,
+          time_control: TIME_CONTROLS[selectedTimeControl]
         }),
       });
   
@@ -94,15 +101,21 @@ const PlayBot = () => {
         {/* Time Control Dropdown */}
         <div className="bg-[#2c2c2c] rounded-lg p-6 mb-6 shadow-lg">
           <h2 className="text-xl font-bold mb-4">Time Control</h2>
-          <Select
-            value={timeControl}
-            onChange={handleTimeControlChange}
-            className="w-full bg-lime-500 text-white"
-          >
-            <MenuItem value={1}>1 Minute</MenuItem>
-            <MenuItem value={3}>3 Minutes</MenuItem>
-            <MenuItem value={10}>10 Minutes</MenuItem>
-          </Select>
+          <div className="flex space-x-4">
+          {Object.keys(TIME_CONTROLS).map((control) => (
+            <button
+              key={control}
+              onClick={() => setSelectedTimeControl(control)}
+              className={`px-4 py-2 rounded-lg transition-colors ${
+                selectedTimeControl === control
+                  ? 'bg-[#7fa650] text-white'
+                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+              }`}
+            >
+              {control}
+            </button>
+          ))}
+        </div>
         </div>
 
         {/* Start Game Button */}

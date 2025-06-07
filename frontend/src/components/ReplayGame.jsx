@@ -2,20 +2,22 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { Chess } from 'chess.js';
 import { Chessboard } from 'react-chessboard';
-import { getMoves, analyzeGame } from '../api.js';
+import { getMoves, analyzeGame,getGameDetails } from '../api.js';
 import NavBar from './NavBar.jsx';
 import MoveLog from './MoveLog.jsx';
 import UserInfo from './UserInfo.jsx';
 import EvalBar from './EvalBar.jsx';
 import Loading from './Loading.jsx';
-
+import MaterialAdvantage from './MaterialAdvantage.jsx';
 import { BackwardIcon, ForwardIcon } from '@heroicons/react/24/outline';
 
 const ReplayGame = () => {
   const { gameId } = useParams();
   const [searchParams] = useSearchParams();
   const analysisMode = searchParams.get('analysis') === 'true';
-
+  const [whiteTime, setWhiteTime] = useState(0);
+  const [blackTime, setBlackTime] = useState(0);
+  const [initialTimeControl, setInitialTimeControl] = useState(600);
   const [moves, setMoves] = useState([]);
   const [currentMoveIndex, setCurrentMoveIndex] = useState(-1);
   const [game, setGame] = useState(new Chess());
@@ -32,6 +34,23 @@ const ReplayGame = () => {
         setLoading(true);
         const movesResponse = await getMoves(gameId);
         setMoves(movesResponse);
+        const gameDetails = await getGameDetails(gameId);
+        setInitialTimeControl(gameDetails.time_control || 600);
+        if (movesResponse.length > 0) {
+          // If we have moves, set initial times from first move's remaining_time
+          const firstMove = movesResponse[0];
+          if (firstMove.player === 'player1') {
+            setWhiteTime(firstMove.remaining_time);
+            setBlackTime(gameDetails.time_control || 600);
+          } else {
+            setBlackTime(firstMove.remaining_time);
+            setWhiteTime(gameDetails.time_control || 600);
+          }
+        } else {
+          // No moves yet, use full time control
+          setWhiteTime(gameDetails.time_control || 600);
+          setBlackTime(gameDetails.time_control || 600);
+        }
         setCurrentMoveIndex(-1);
         setGame(new Chess());
         if (analysisMode) {
@@ -56,7 +75,9 @@ const ReplayGame = () => {
     };
     fetchMoves();
   }, [gameId, analysisMode]);
-
+  useEffect(() => {
+    console.log("Updated moves:", moves);
+  }, [moves]);
   const goToPreviousMove = () => {
     if (currentMoveIndex > 0) {
       const newIndex = currentMoveIndex - 1;
@@ -78,11 +99,18 @@ const ReplayGame = () => {
     let lastMoveToSquare = null;
     const updatedCapturedPieces = { white: [], black: [] };
     let materialAdvantage = 0;
-
+     let currentWhiteTime = initialTimeControl;
+    let currentBlackTime = initialTimeControl;
     for (let i = 0; i <= index; i++) {
       const move = gameCopy.move(moves[i].move);
       if (i === index) {
         lastMoveToSquare = move.to;
+      }
+      console.log(moves[i].player);
+      if (moves[i].player === 'player1') {
+        currentWhiteTime = moves[i].remaining_time;
+      } else {
+        currentBlackTime = moves[i].remaining_time;
       }
       if (move.captured) {
         const capturedPiece = move.captured.toLowerCase();
@@ -94,8 +122,9 @@ const ReplayGame = () => {
           materialAdvantage -= getPieceValue(capturedPiece);
         }
       }
+      setWhiteTime(currentWhiteTime);
+    setBlackTime(currentBlackTime);
     }
-
     setCapturedPieces(updatedCapturedPieces);
     setMaterialAdvantage(materialAdvantage);
     setGame(gameCopy);
@@ -169,6 +198,15 @@ const ReplayGame = () => {
     return styles;
   };
 
+  const moveHistory = [];
+  for (let i = 0; i < moves.length; i += 2) {
+    moveHistory.push({
+      number: Math.floor(i / 2) + 1,
+      white: moves[i]?.move || '',
+      black: moves[i + 1]?.move || '',
+      player: moves[i + 1]?.player_id || moves[i]?.player_id || '',
+    });
+  }
 
 
   const getPieceValue = (piece) => {
@@ -182,7 +220,7 @@ const ReplayGame = () => {
     }
   };
   if (loading) {
-    return <Loading text='Analysing'/>;
+    return <Loading text='Analysing' />;
   }
   const currentEvaluation = analysisMode && analysis && currentMoveIndex >= 0
     ? analysis.find(a => a.moveId === moves[currentMoveIndex]?.id)?.evaluation || materialAdvantage
@@ -203,7 +241,7 @@ const ReplayGame = () => {
           <div className="flex justify-center flex-col sm:w-1/2 sm:h-auto">
             <div className='w-full overflow-y-scroll'>
               <MoveLog
-                moveLog={moves.map((move) => move.move)} // Pass the move log as an array of moves
+                moveHistory={moveHistory} // Pass the move log as an array of moves
                 currentMoveIndex={currentMoveIndex}
                 checkOutMove={checkOutMove}
                 isMobile={true}
@@ -213,9 +251,14 @@ const ReplayGame = () => {
             <UserInfo
               playerName="Player 1"
               playerRating="1600"
-              capturedPieces={capturedPieces.white}
-              materialAdvantage={materialAdvantage < 0 ? -materialAdvantage : 0}
+              isTopPlayer={true}
               isBot={false}
+              timeRemaining={blackTime}
+            />
+            <MaterialAdvantage
+              capturedPieces={capturedPieces}
+              materialAdvantage={materialAdvantage < 0 ? -materialAdvantage : 0}
+              isTopPlayer={true}
             />
 
             <div className="flex items-stretch">
@@ -232,18 +275,23 @@ const ReplayGame = () => {
             </div>
 
 
+            <MaterialAdvantage
+              capturedPieces={capturedPieces}
+              materialAdvantage={materialAdvantage > 0 ? materialAdvantage : 0}
+              isTopPlayer={false}
+            />
             <UserInfo
               playerName="Player 2"
               playerRating="1600"
-              capturedPieces={capturedPieces.black}
-              materialAdvantage={materialAdvantage > 0 ? materialAdvantage : 0}
+              isTopPlayer={false}
               isBot={false}
+              timeRemaining={whiteTime} 
             />
           </div>
 
           <div className="flex flex-col lg:w-1/2">
             <MoveLog
-              moveLog={moves.map((move) => move.move)}
+              moveHistory={moveHistory}
               currentMoveIndex={currentMoveIndex}
               checkOutMove={checkOutMove}
               isMobile={false}

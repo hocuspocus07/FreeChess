@@ -131,7 +131,29 @@ io.on("connection", (socket) => {
     socket.emit('waitingForOpponent');
   });
 
-  socket.on('makeMove', async ({ gameId, move, fen, currentTurn, moveHistory }) => {
+  socket.on('resignGame', async ({ gameId, resignerId }) => {
+  const game = activeGames.get(gameId);
+  if (!game) return;
+
+  let winnerId = null;
+  if (game.player1 === resignerId) {
+    winnerId = game.player2;
+  } else if (game.player2 === resignerId) {
+    winnerId = game.player1;
+  }
+
+  // Save to database
+  await Game.setWinner(gameId, winnerId);
+  await Game.endGame(gameId);
+  await Game.updateStatus(gameId, 'completed');
+
+  io.to(gameId).emit('gameEnded', { winnerId });
+  socket.to(gameId).emit('opponentResigned');
+
+  activeGames.delete(gameId);
+});
+
+  socket.on('makeMove', async ({ gameId, move, fen, currentTurn, moveHistory,timeRemaining }) => {
     const game = activeGames.get(gameId);
     if (!game) return;
   
@@ -140,15 +162,16 @@ io.on("connection", (socket) => {
       if (!moveObj) return socket.emit('invalidMove', { message: 'Invalid move' });
   
       game.currentTurn = game.chess.turn() === 'w' ? 'w' : 'b';
+      const timeControl = await Game.getTimeControl(gameId);
+    const remainingTime = timeControl; 
       
+      await Game.saveMove(gameId, socket.user._id, game.chess.history().length, moveObj.san,move.color === 'w' ? timeRemaining.white : timeRemaining.black);
       io.to(gameId).emit('moveMade', {
         move: moveObj.san,
         fen: game.chess.fen(),
         currentTurn: game.currentTurn,
-        moveHistory
+        moveHistory:game.chess.history(),
       });
-  
-      await Game.saveMove(gameId, socket.user._id, game.chess.history().length, moveObj.san);
     } catch (error) {
       socket.emit('error', { message: 'Move processing failed' });
     }
