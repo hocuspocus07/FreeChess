@@ -493,108 +493,109 @@ useEffect(() => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-4 md:p-6">
-      <div className="max-w-7xl mx-auto">
-        <header className="flex justify-between items-center mb-6">
-          <button
-            onClick={() => navigate('/multiplayer')}
-            className="flex items-center gap-1 text-indigo-400 hover:text-indigo-300 transition-colors"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
-            </svg>
-            <span className="font-medium">Back</span>
-          </button>
-          <h1 className="text-xl md:text-2xl font-bold bg-gradient-to-r from-indigo-500 to-purple-600 bg-clip-text text-transparent">
-            Online Chess
-          </h1>
-          <div className="w-5"></div>
-        </header>
-
-        <div className="flex flex-col lg:flex-row gap-6">
-          <div className="flex-1 flex flex-col items-center">
-            {renderStatusMessage()}
-            <div className='w-full'><MoveLog isMobile={true} moveHistory={moveHistory} currentMoveIndex={currentMoveIndex} checkOutMove={checkOutMove} /></div>
-            <div className="w-full max-w-md aspect-square mt-4">
-              <div className="mb-2">
-                <UserInfo
-                  playerName={playerColor === 'white' ? 'Opponent' : 'You'}
-                  playerRating="1600"
-                  timeRemaining={playerColor === 'white' ? blackTime : whiteTime}
-                  isBot={false}
-                  isCurrentTurn={currentTurn !== playerColor}
-                />
-                <MaterialAdvantage
-                  capturedPieces={{
-                    white: [],
-                    black: []
-                  }}
-                  materialAdvantage={0}
-                  isTopPlayer={true}
-                />
-              </div>
-
+  <div className="min-h-screen bg-[#1a1a1a] text-white font-sans">
+    <div className="max-w-4xl mx-auto mt-9 p-6 bg-[#2c2c2c] rounded-lg shadow-lg">
+      <header className="flex justify-between items-center mb-6">
+        <button
+          onClick={() => navigate('/multiplayer')}
+          className="flex items-center gap-1 text-indigo-400 hover:text-indigo-300 transition-colors"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
+          </svg>
+          <span className="font-medium">Back</span>
+        </button>
+        <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-500 to-purple-600 bg-clip-text text-transparent">
+          Online Chess
+        </h1>
+        <div className="w-5"></div>
+      </header>
+      <div className="flex flex-col lg:flex-row gap-6 bg-gray-900 p-5 rounded-lg">
+        <div className="flex flex-col justify-center sm:w-1/2 sm:h-auto">
+          <div className="w-full overflow-y-scroll mb-2">
+            <MoveLog
+              moveHistory={moveHistory}
+              currentMoveIndex={currentMoveIndex}
+              checkOutMove={checkOutMove}
+              isMobile={true}
+            />
+          </div>
+          <UserInfo
+            playerName={playerColor === 'white' ? 'Opponent' : 'You'}
+            playerRating="1600"
+            timeRemaining={playerColor === 'white' ? blackTime : whiteTime}
+            isBot={false}
+            isCurrentTurn={currentTurn !== playerColor}
+          />
+          <MaterialAdvantage
+            capturedPieces={{
+              white: [],
+              black: []
+            }}
+            materialAdvantage={0}
+            isTopPlayer={true}
+          />
+          <div className="flex items-stretch mt-2">
+            <div className="flex-1">
               <Chessboard
                 position={game.fen()}
                 onPieceDrop={onDrop}
                 boardOrientation={playerColor || 'white'}
               />
-
-              <div className="mt-2">
-                <MaterialAdvantage
-                  capturedPieces={{
-                    white: [],
-                    black: []
-                  }}
-                  materialAdvantage={0}
-                  isTopPlayer={false}
-                />
-                <UserInfo
-                  playerName={playerColor === 'white' ? 'You' : 'Opponent'}
-                  playerRating="1600"
-                  timeRemaining={playerColor === 'white' ? whiteTime : blackTime}
-                  isBot={false}
-                  isCurrentTurn={currentTurn === playerColor}
-                />
-              </div>
             </div>
-
-            {status === 'active' && (
-              <button
-                onClick={handleResign}
-                className="mt-4 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors shadow-md"
-              >
-                Resign
-              </button>
-            )}
-
-            {status === 'ended' && (
-              <div className="flex gap-3 mt-4">
-                <button
-                  onClick={() => window.location.reload()}
-                  className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors shadow-md"
-                >
-                  Play Again
-                </button>
-                <button
-                  onClick={() => navigate('/')}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors shadow-md"
-                >
-                  Main Menu
-                </button>
-              </div>
-            )}
           </div>
-
+          <MaterialAdvantage
+            capturedPieces={{
+              white: [],
+              black: []
+            }}
+            materialAdvantage={0}
+            isTopPlayer={false}
+          />
+          <UserInfo
+            playerName={playerColor === 'white' ? 'You' : 'Opponent'}
+            playerRating="1600"
+            timeRemaining={playerColor === 'white' ? whiteTime : blackTime}
+            isBot={false}
+            isCurrentTurn={currentTurn === playerColor}
+          />
+          {status === 'active' && (
+            <button
+              onClick={handleResign}
+              className="mt-4 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors shadow-md"
+            >
+              Resign
+            </button>
+          )}
+          {status === 'ended' && (
+            <div className="flex gap-3 mt-4">
+              <button
+                onClick={() => window.location.reload()}
+                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors shadow-md"
+              >
+                Play Again
+              </button>
+              <button
+                onClick={() => navigate('/')}
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors shadow-md"
+              >
+                Main Menu
+              </button>
+            </div>
+          )}
+        </div>
+        <div className="flex flex-col lg:w-1/2">
           <MoveLog
             moveHistory={moveHistory}
             currentMoveIndex={currentMoveIndex}
             checkOutMove={checkOutMove}
+            isMobile={false}
           />
         </div>
       </div>
     </div>
-  );
+  </div>
+);
 };
 
 export default PlayOnline;

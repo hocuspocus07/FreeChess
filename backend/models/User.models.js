@@ -61,6 +61,51 @@ class User{
         );
         return rows;
       }
+
+      // add friend functionality
+
+static async sendFriendRequest(userId, friendId) {
+  await pool.query(
+    'INSERT IGNORE INTO friends (user_id, friend_id, status) VALUES (?, ?, "pending")',
+    [userId, friendId]
+  );
+}
+
+static async acceptFriendRequest(userId, friendId) {
+  await pool.query(
+    'UPDATE friends SET status="accepted" WHERE user_id=? AND friend_id=?',
+    [friendId, userId] // friendId sent the request to userId
+  );
+}
+
+static async removeFriend(userId, friendId) {
+  await pool.query(
+    'DELETE FROM friends WHERE (user_id=? AND friend_id=?) OR (user_id=? AND friend_id=?)',
+    [userId, friendId, friendId, userId]
+  );
+}
+
+static async getFriends(userId) {
+  const [rows] = await pool.query(
+    `SELECT u.id, u.username, u.email
+     FROM friends f
+     JOIN users u ON (u.id = f.friend_id AND f.user_id = ? OR u.id = f.user_id AND f.friend_id = ?)
+     WHERE (f.user_id = ? OR f.friend_id = ?) AND f.status = 'accepted' AND u.id != ?`,
+    [userId, userId, userId, userId, userId]
+  );
+  return rows;
+}
+
+static async getFriendRequests(userId) {
+  const [rows] = await pool.query(
+    `SELECT f.id, u.id as user_id, u.username
+     FROM friends f
+     JOIN users u ON u.id = f.user_id
+     WHERE f.friend_id = ? AND f.status = 'pending'`,
+    [userId]
+  );
+  return rows;
+}
 }
 
 export default User;

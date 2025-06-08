@@ -187,3 +187,39 @@ export const searchUsersByUsername = async (req, res) => {
     res.status(500).json({ message: 'Error searching users', error: error.message });
   }
 };
+
+//friend functionality controllers
+
+export const sendFriendRequest = async (req, res) => {
+  const { friendId } = req.body;
+  const userId = req.user.id;
+  if (userId === friendId) return res.status(400).json({ message: "Cannot add yourself." });
+  await User.sendFriendRequest(userId, friendId);
+  res.json({ message: "Friend request sent." });
+};
+
+export const acceptFriendRequest = async (req, res) => {
+  const { friendId } = req.body;
+  const userId = req.user.id;
+  await User.acceptFriendRequest(userId, friendId);
+  res.json({ message: "Friend request accepted." });
+};
+
+export const removeFriend = async (req, res) => {
+  const { friendId } = req.body;
+  const userId = req.user.id;
+  await User.removeFriend(userId, friendId);
+  res.json({ message: "Friend removed." });
+};
+
+export const getFriends = async (req, res) => {
+  const userId = req.user.id;
+  const friends = await User.getFriends(userId);
+  res.json({ friends });
+};
+
+export const getFriendRequests = async (req, res) => {
+  const userId = req.user.id;
+  const requests = await User.getFriendRequests(userId);
+  res.json({ requests });
+};
