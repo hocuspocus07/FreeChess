@@ -8,6 +8,7 @@ import RecentMatchesTable from '../components/RecentMatchesTable.jsx';
 import PostGameCard from '../components/PostGameCard.jsx';
 import MatchStats from '../components/MatchStats.jsx';
 import Loading from '../components/Loading.jsx';
+import FriendList from '../components/FriendList.jsx';
 
 const getUserIdFromToken = () => {
   const token = localStorage.getItem('token');
@@ -223,7 +224,7 @@ const fetchRecentMatches = async () => {
           <h1 className="text-3xl font-extrabold mb-2">Welcome, {user.username}</h1>
           <p className="text-gray-400">Joined on {new Date(user.created_at).toLocaleDateString()}</p>
         </div>
-
+<FriendList isOwnProfile={true} userId={userId}/>
 
         <RecentMatchesTable
           matches={recentMatches}

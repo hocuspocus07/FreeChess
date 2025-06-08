@@ -89,9 +89,13 @@ static async getFriends(userId) {
   const [rows] = await pool.query(
     `SELECT u.id, u.username, u.email
      FROM friends f
-     JOIN users u ON (u.id = f.friend_id AND f.user_id = ? OR u.id = f.user_id AND f.friend_id = ?)
-     WHERE (f.user_id = ? OR f.friend_id = ?) AND f.status = 'accepted' AND u.id != ?`,
-    [userId, userId, userId, userId, userId]
+     JOIN users u ON (
+       (f.user_id = ? AND u.id = f.friend_id)
+       OR
+       (f.friend_id = ? AND u.id = f.user_id)
+     )
+     WHERE f.status = 'accepted'`,
+    [userId, userId]
   );
   return rows;
 }

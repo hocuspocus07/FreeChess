@@ -298,3 +298,86 @@ export const analyzeGame = async (gameId) => {
     throw error;
   }
 };
+
+//friend functionality
+export const sendFriendRequest = async (friendId) => {
+  try {
+    const response = await axios.post(
+      `${API_BASE_URL}/chess/users/friends/request`,
+      { friendId },
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+export const acceptFriendRequest = async (friendId) => {
+  try {
+    const response = await axios.post(
+      `${API_BASE_URL}/chess/users/friends/accept`,
+      { friendId },
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+export const removeFriend = async (friendId) => {
+  try {
+    const response = await axios.post(
+      `${API_BASE_URL}/chess/users/friends/remove`,
+      { friendId },
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+export const getFriends = async (userId) => {
+  try {
+    const url = userId
+      ? `${API_BASE_URL}/chess/users/${userId}/friends`
+      : `${API_BASE_URL}/chess/users/friends`;
+    const headers = userId
+      ? {} // public route, no auth needed
+      : { Authorization: `Bearer ${localStorage.getItem('token')}` };
+    const response = await axios.get(url, { headers });
+    return response.data.friends;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+export const getFriendRequests = async () => {
+  try {
+    const response = await axios.get(
+      `${API_BASE_URL}/chess/users/friends/requests`,
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+      }
+    );
+    return response.data.requests;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};

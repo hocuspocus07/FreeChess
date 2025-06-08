@@ -4,7 +4,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import NavBar from '../components/NavBar';
 import RecentMatchesTable from '../components/RecentMatchesTable.jsx';
 import MatchStats from '../components/MatchStats.jsx';
-
+import FriendList from '../components/FriendList.jsx';
+import { sendFriendRequest } from '../api.js';
 const UserProfile = () => {
   const { userId } = useParams(); // Get userId from the URL
   const [user, setUser] = useState(null);
@@ -12,6 +13,19 @@ const UserProfile = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedTimeControl, setSelectedTimeControl] = useState(null);
+   const [friendRequestSent, setFriendRequestSent] = useState(false);
+  const [friendRequestError, setFriendRequestError] = useState('');
+  const signedInUserId = localStorage.getItem('userId');
+
+  const handleAddFriend = async () => {
+    try {
+      await sendFriendRequest(user.id);
+      setFriendRequestSent(true);
+      setFriendRequestError('');
+    } catch (err) {
+      setFriendRequestError(err.message || 'Failed to send friend request');
+    }
+  };
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -76,7 +90,20 @@ const UserProfile = () => {
         <div className="bg-[#2c2c2c] rounded-lg p-6 mb-6 shadow-lg">
           <h1 className="text-3xl font-extrabold mb-2 text-lime-500">{user.username}</h1>
           <p className="text-gray-400">Joined on {new Date(user.created_at).toLocaleDateString()}</p>
-        </div>
+                    <FriendList isOwnProfile={userId === signedInUserId} userId={userId} />
+          {userId !== signedInUserId && (
+            <>
+              <button
+                className='bg-lime-500 text-white text-bold text-sm p-2 rounded-xl'
+                onClick={handleAddFriend}
+                disabled={friendRequestSent}
+              >
+                {friendRequestSent ? 'Request Sent' : 'Add Friend'}
+              </button>
+              {friendRequestError && <div className="text-red-400">{friendRequestError}</div>}
+            </>
+          )}
+</div>
         <RecentMatchesTable
           matches={recentMatches}
           selectedTimeControl={selectedTimeControl}

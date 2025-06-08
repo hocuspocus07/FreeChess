@@ -1,17 +1,18 @@
 import { Disclosure, DisclosureButton, DisclosurePanel, Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react';
 import { Bars3Icon, BellIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import Search from './Search.jsx';
-import { logoutUser } from '../api.js';
-import { useNavigate,useLocation, href } from 'react-router-dom';
-import { useEffect, useState } from 'react'; 
+import { logoutUser,getFriendRequests } from '../api.js';
+import { useNavigate, useLocation, href } from 'react-router-dom';
+import { useEffect, useState,useRef } from 'react';
+import FriendRequests from './FriendRequests.jsx';
 
 const navigationList = [
   { name: 'Home', href: '/', current: false },
   { name: 'How To Play', href: '/how-to', current: false },
   { name: 'Register', href: '/register', current: false },
   { name: 'Login', href: '/login', current: false },
-  {name:'Play A Bot',href:'/play-bot',current:false},
-  {name:'Multiplayer',href:'/multiplayer',current:false},
+  { name: 'Play A Bot', href: '/play-bot', current: false },
+  { name: 'Multiplayer', href: '/multiplayer', current: false },
 ];
 
 function classNames(...classes) {
@@ -20,10 +21,25 @@ function classNames(...classes) {
 
 export default function NavBar() {
   const navigate = useNavigate();
-  const location=useLocation();
+  const location = useLocation();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [navigation,setNavigation]=useState(navigationList);
+  const [navigation, setNavigation] = useState(navigationList);
+  const [showRequests, setShowRequests] = useState(false);
+  const [friendRequests, setFriendRequests] = useState([]);
+  const requestsRef = useRef();
 
+  const fetchFriendRequests = async () => {
+    try {
+      const data = await getFriendRequests();
+      setFriendRequests(data);
+    } catch {
+      setFriendRequests([]);
+    }
+  };
+
+  useEffect(() => {
+    if (showRequests) fetchFriendRequests();
+  }, [showRequests]);
   useEffect(() => {
     const updatedNavigation = navigationList.map((item) => ({
       ...item,
@@ -45,7 +61,7 @@ export default function NavBar() {
       localStorage.removeItem('token');
       localStorage.removeItem('userId');
       setIsLoggedIn(false);
-      navigate('/login'); 
+      navigate('/login');
     } catch (error) {
       console.error('Logout failed:', error);
     }
@@ -77,7 +93,7 @@ export default function NavBar() {
                   if (isLoggedIn && (item.name === 'Register' || item.name === 'Login')) {
                     return null;
                   } else if (!isLoggedIn && item.name === 'Play A Bot') {
-                    return null; 
+                    return null;
                   }
                   return (
                     <a
@@ -102,13 +118,15 @@ export default function NavBar() {
                 <Search />
               </div>
               <button
-                type="button"
-                className="relative rounded-full bg-gray-800 p-1 text-gray-400 hover:text-white focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-gray-800 focus:outline-hidden"
-              >
-                <span className="absolute -inset-1.5" />
-                <span className="sr-only">View notifications</span>
-                <BellIcon aria-hidden="true" className="size-6" />
-              </button>
+  type="button"
+  className="relative rounded-full bg-gray-800 p-1 text-gray-400 hover:text-white focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-gray-800 focus:outline-hidden"
+  onClick={() => setShowRequests((prev) => !prev)}
+>
+  <span className="absolute -inset-1.5" />
+  <span className="sr-only">View Requests</span>
+  <BellIcon aria-hidden="true" className="size-6" />
+  <FriendRequests show={showRequests} onClose={() => setShowRequests(false)} />
+</button>
               <Menu as="div" className="relative ml-3">
                 <div>
                   <MenuButton className="relative flex rounded-full bg-gray-800 text-sm focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-gray-800 focus:outline-hidden">
@@ -154,7 +172,7 @@ export default function NavBar() {
             if (isLoggedIn && (item.name === 'Register' || item.name === 'Login')) {
               return null;
             } else if (!isLoggedIn && item.name === 'Play A Bot') {
-              return null; 
+              return null;
             }
             return (
               <DisclosureButton

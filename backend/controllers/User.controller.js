@@ -223,3 +223,9 @@ export const getFriendRequests = async (req, res) => {
   const requests = await User.getFriendRequests(userId);
   res.json({ requests });
 };
+
+export const getFriendsOfUser = async (req, res) => {
+  const userId = req.params.userId;
+  const friends = await User.getFriends(userId);
+  res.json({ friends });
+};
