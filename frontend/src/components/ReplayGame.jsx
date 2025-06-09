@@ -161,43 +161,47 @@ const ReplayGame = () => {
   };
 
   const highlightMoveSquares = () => {
-    const styles = {};
+  const styles = {};
 
-    if (currentMoveIndex >= 0 && moveTypePosition) {
-      let imageUrl = null;
-
-      switch (currentMoveType) {
-        case "bestmove":
-          imageUrl = "/best.png";
-          break;
-        case "greatmove":
-          imageUrl = "/great.png";
-          break;
-        case "blunder":
-          imageUrl = "/blunder.png";
-          break;
-        case "mistake":
-          imageUrl = "/mistake.png";
-          break;
-        case "inaccuracy":
-          imageUrl = "/inaccuracy.png";
-          break;
-        default:
-          imageUrl = null;
-      }
-
-      if (imageUrl) {
-        styles[moveTypePosition] = {
-          backgroundImage: `url(${imageUrl})`,
-          backgroundSize: "contain",
-          backgroundRepeat: "no-repeat",
-          backgroundPosition: "center",
-        };
-      }
+  if (currentMoveIndex >= 0 && analysisMode && analysis && moves[currentMoveIndex]) {
+    // Find the analysis for the current move
+    const moveAnalysis = analysis.find(a => a.moveId === moves[currentMoveIndex].id);
+    const moveType = moveAnalysis?.moveType?.toLowerCase(); // e.g., "brilliant", "blunder", etc.
+    const move = moves[currentMoveIndex];
+    const gameCopy = new Chess();
+    for (let i = 0; i <= currentMoveIndex; i++) {
+      gameCopy.move(moves[i].move);
     }
+    const toSquare = gameCopy.history({ verbose: true })[currentMoveIndex]?.to;
 
-    return styles;
-  };
+    // Map move types to image URLs
+    const moveTypeImages = {
+      "Brilliant": "/brilliant.png",
+      "Great Move": "/great.png",
+      "Best Move": "/best.png",
+      "Excellent": "/excellent.png",
+      "Good": "/good.png",
+      "Book": "/book.png",
+      "Inaccuracy": "/inaccuracy.png",
+      "Mistake": "/mistake.png",
+      "Miss": "/miss.png",
+      "Blunder": "/blunder.png"
+    };
+
+    const imageUrl = moveTypeImages[moveType];
+
+    if (imageUrl && toSquare) {
+      styles[toSquare] = {
+        backgroundImage: `url(${imageUrl})`,
+        backgroundSize: "30% 30%",
+        backgroundRepeat: "no-repeat",
+        backgroundPosition: "top left"
+      };
+    }
+  }
+
+  return styles;
+};
 
   const moveHistory = [];
   for (let i = 0; i < moves.length; i += 2) {
