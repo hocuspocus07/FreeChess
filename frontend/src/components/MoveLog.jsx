@@ -48,7 +48,6 @@ const MoveLog = ({ moveHistory = [], currentMoveIndex, checkOutMove, isMobile = 
                     >
                       {move.white || '-'}
                     </td>
-{console.log('Move at index', index, move)}
                     <td
                       className={`py-2 cursor-pointer ${currentMoveIndex === index * 2 + 1 ? 'bg-yellow-500 text-black highlighted' : ''
                         } ${move.black && move.player === localStorage.getItem('userId') ?

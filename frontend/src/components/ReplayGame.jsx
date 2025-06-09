@@ -10,6 +10,7 @@ import EvalBar from './EvalBar.jsx';
 import Loading from './Loading.jsx';
 import MaterialAdvantage from './MaterialAdvantage.jsx';
 import { BackwardIcon, ForwardIcon } from '@heroicons/react/24/outline';
+import AnalysisResult from './AnalysisResult.jsx';
 
 const ReplayGame = () => {
   const { gameId } = useParams();
@@ -296,10 +297,7 @@ const ReplayGame = () => {
               checkOutMove={checkOutMove}
               isMobile={false}
             />
-          </div>
-        </div>
-
-        <div className="flex justify-between mt-4">
+            <div className="flex justify-between mt-4">
           <button
             onClick={goToPreviousMove}
             disabled={currentMoveIndex < 0}
@@ -314,6 +312,9 @@ const ReplayGame = () => {
           >
             <ForwardIcon className='h-6 w-6' />
           </button>
+        </div>
+            <AnalysisResult analysisResults={analysis || []} />
+          </div>
         </div>
       </div>
     </div>
