@@ -389,3 +389,21 @@ export const getFriendshipStatus = async (otherUserId) => {
   );
   return response.data.status; // 'none', 'pending', or 'accepted'
 };
+
+export const resignGame = async (gameId) => {
+  try {
+    const response = await axios.post(
+      `${API_BASE_URL}/chess/game/${gameId}/resign`,
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};

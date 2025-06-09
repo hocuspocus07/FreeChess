@@ -366,3 +366,34 @@ export const deleteAbandonedGames=async (req,res)=>{
     res.status(500).json({ error: error.message });
   }
 }
+
+export const resignGame = async (req, res) => {
+  const { gameId } = req.params;
+  const userId = req.user.id;
+
+  try {
+    const game = await Game.findById(gameId);
+    if (!game) {
+      return res.status(404).json({ error: "Game not found" });
+    }
+
+    if (userId !== game.player1_id && userId !== game.player2_id) {
+      return res.status(403).json({ error: "You are not a player in this game" });
+    }
+
+    let winnerId = null;
+    if (userId === game.player1_id) {
+      winnerId = game.player2_id;
+    } else if (userId === game.player2_id) {
+      winnerId = game.player1_id;
+    }
+
+    await Game.setWinner(gameId, winnerId);
+    await Game.updateStatus(gameId, 'resigned');
+    await Game.endGame(gameId);
+
+    res.status(200).json({ message: "Game resigned successfully", winnerId });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to resign game", details: error.message });
+  }
+};

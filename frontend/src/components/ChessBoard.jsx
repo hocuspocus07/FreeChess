@@ -128,6 +128,35 @@ const ChessBoard = ({ isBotGame, botRating, timeControl, isViewOnly, gameId, use
     }, 1000);
   };
 
+  const handleResign = async () => {
+  if (!gameId || !userId) return;
+  if (!window.confirm("Are you sure you want to resign?")) return;
+
+  try {
+    const response = await fetch(`http://localhost:8000/chess/game/${gameId}/resign`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${localStorage.getItem('token')}`,
+      },
+    });
+
+    if (!response.ok) throw new Error('Failed to resign game');
+    const data = await response.json();
+
+    setGameOver(true);
+    setGameResultDisplay({
+      result: "resigned",
+      winnerId: data.winnerId,
+      winType: "Resignation",
+      gameId,
+    });
+    setShowPostGameCard(true);
+  } catch (error) {
+    alert('Error resigning game: ' + error.message);
+  }
+};
+
   const handleTimerExpired = async (winnerColor) => {
     setGameOver(true);
     clearInterval(timerRef.current);
@@ -389,6 +418,14 @@ const ChessBoard = ({ isBotGame, botRating, timeControl, isViewOnly, gameId, use
     setCurrentMoveIndex(index);
   };
 
+const moveHistoryPairs = [];
+for (let i = 0; i < moveLog.length; i += 2) {
+  moveHistoryPairs.push({
+    number: Math.floor(i / 2) + 1,
+    white: moveLog[i] || '',
+    black: moveLog[i + 1] || ''
+  });
+}
   return (
     <div className="flex justify-center items-center min-h-screen w-screen bg-[#2c2c2c] p-4">
       {showPostGameCard && gameResultDisplay && (
@@ -405,7 +442,7 @@ const ChessBoard = ({ isBotGame, botRating, timeControl, isViewOnly, gameId, use
             isTopPlayer={true}
             isBot={isBotGame}
             botRating={botRating}
-            time={blackTime} 
+            timeRemaining={blackTime} 
           />
           <MaterialAdvantage
             capturedPieces={capturedPieces}
@@ -415,7 +452,7 @@ const ChessBoard = ({ isBotGame, botRating, timeControl, isViewOnly, gameId, use
 
           <div className='h-6 w-screen flex bg-gray-800 text-white overflow-x-scroll md:hidden'>
             <MoveLog
-              moveLog={moveLog}
+              moveHistory={moveHistoryPairs}
               currentMoveIndex={currentMoveIndex}
               checkOutMove={checkOutMove}
               isMobile={true}
@@ -438,12 +475,12 @@ const ChessBoard = ({ isBotGame, botRating, timeControl, isViewOnly, gameId, use
             playerRating="1600"
             isTopPlayer={false}
             isBot={false}
-            time={whiteTime}  
+            timeRemaining={whiteTime}  
           />
         </div>
         <div className='flex flex-col w-1/4 h-full'>
           <MoveLog
-            moveLog={moveLog}
+            moveHistory={moveHistoryPairs}
             currentMoveIndex={currentMoveIndex}
             checkOutMove={checkOutMove}
             isMobile={false}
@@ -463,6 +500,13 @@ const ChessBoard = ({ isBotGame, botRating, timeControl, isViewOnly, gameId, use
             >
               <ForwardIcon className='h-6 w-6' />
             </button>
+            <button
+    onClick={handleResign}
+    className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 ml-4"
+    disabled={gameOver}
+  >
+    Resign
+  </button>
           </div>
         </div>
       </div>
