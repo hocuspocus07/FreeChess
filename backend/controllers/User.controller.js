@@ -229,3 +229,11 @@ export const getFriendsOfUser = async (req, res) => {
   const friends = await User.getFriends(userId);
   res.json({ friends });
 };
+
+export const getFriendshipStatus = async (req, res) => {
+  const userId = req.user.id;
+  const { otherUserId } = req.params;
+  const status = await User.getFriendStatus(userId, otherUserId);
+  if (!status) return res.json({ status: 'none' });
+  return res.json({ status });
+};

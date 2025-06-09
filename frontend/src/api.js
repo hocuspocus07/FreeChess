@@ -381,3 +381,11 @@ export const getFriendRequests = async () => {
     throw error.response?.data || error;
   }
 };
+
+export const getFriendshipStatus = async (otherUserId) => {
+  const response = await axios.get(
+    `${API_BASE_URL}/chess/users/friendship-status/${otherUserId}`,
+    { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
+  );
+  return response.data.status; // 'none', 'pending', or 'accepted'
+};

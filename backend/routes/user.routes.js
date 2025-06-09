@@ -1,5 +1,5 @@
 import express,{Router} from 'express'
-import { registerUser,loginUser,getUserDetails,logoutUser,searchUsersByUsername,refreshAccessToken,sendFriendRequest,acceptFriendRequest,removeFriend,getFriendRequests,getFriends,getFriendsOfUser } from "../controllers/User.controller.js";
+import { registerUser,loginUser,getUserDetails,logoutUser,searchUsersByUsername,refreshAccessToken,sendFriendRequest,acceptFriendRequest,removeFriend,getFriendRequests,getFriends,getFriendsOfUser,getFriendshipStatus } from "../controllers/User.controller.js";
 import { verifyJWT } from '../middleware/auth.middleware.js';
 const userRouter=Router()
 
@@ -15,7 +15,7 @@ userRouter.post('/friends/accept', verifyJWT, acceptFriendRequest);
 userRouter.post('/friends/remove', verifyJWT, removeFriend);
 userRouter.get('/friends', verifyJWT, getFriends);
 userRouter.get('/friends/requests', verifyJWT, getFriendRequests);
-
+userRouter.get('/friendship-status/:otherUserId', verifyJWT,getFriendshipStatus);
 userRouter.get('/:userId/friends', getFriendsOfUser);
 userRouter.get('/:userId',getUserDetails);
 export default userRouter;
