@@ -29,7 +29,25 @@ const PlayOnline = () => {
   const [lastMoveTime, setLastMoveTime] = useState(Date.now());
   const [timerInterval, setTimerInterval] = useState(null);
   const [hasJoinedQueue, setHasJoinedQueue] = useState(false);
+const [myUsername, setMyUsername] = useState('');
+const [opponentUsername, setOpponentUsername] = useState('');
+useEffect(() => {
+  const userId = localStorage.getItem('userId');
+  if (userId) {
+    fetch(`http://localhost:8000/chess/users/${userId}`)
+      .then(res => res.json())
+      .then(data => setMyUsername(data.user?.username || 'You'));
+  }
+}, []);
 
+// Fetch opponent username when assigned:
+useEffect(() => {
+  if (opponentId) {
+    fetch(`http://localhost:8000/chess/users/${opponentId}`)
+      .then(res => res.json())
+      .then(data => setOpponentUsername(data.user?.username || 'Opponent'));
+  }
+}, [opponentId]);
 useEffect(() => {
   if (!socket) return;
 
@@ -108,7 +126,7 @@ useEffect(() => {
 useEffect(() => {
   if (!socket) return;
 
-  const handleMoveMade = ({ move, fen, currentTurn, moveHistory: serverMoveHistory }) => {
+  const handleMoveMade = ({ move, fen, currentTurn, moveHistory: serverMoveHistory,timeRemaining }) => {
     try {
       const newGame = new Chess(fen);
       setGame(newGame);
@@ -125,8 +143,8 @@ useEffect(() => {
     for (let i = 0; i < moves.length; i += 2) {
       updatedMoveHistory.push({
         number: Math.floor(i / 2) + 1,
-        white: moves[i] || '',
-        black: moves[i + 1] || '',
+        white:typeof moves[i] === 'string' ? moves[i] : moves[i]?.white || '',
+    black: typeof moves[i + 1] === 'string' ? moves[i + 1] : moves[i + 1]?.black || '',
       });
     }
       setMoveHistory(updatedMoveHistory);
@@ -402,6 +420,10 @@ useEffect(() => {
           finalWinnerId = null;
         }
 
+        if(moveHistory.length === 0) {
+          return;
+        }
+
         const response = await fetch(`http://localhost:8000/chess/game/${gameId}/end`, {
           method: 'POST',
           headers: {
@@ -521,7 +543,7 @@ useEffect(() => {
             />
           </div>
           <UserInfo
-            playerName={playerColor === 'white' ? 'Opponent' : 'You'}
+            playerName={playerColor === 'white' ? opponentUsername : myUsername}
             playerRating="1600"
             timeRemaining={playerColor === 'white' ? blackTime : whiteTime}
             isBot={false}
@@ -553,7 +575,7 @@ useEffect(() => {
             isTopPlayer={false}
           />
           <UserInfo
-            playerName={playerColor === 'white' ? 'You' : 'Opponent'}
+            playerName={playerColor === 'white' ? myUsername : opponentUsername}
             playerRating="1600"
             timeRemaining={playerColor === 'white' ? whiteTime : blackTime}
             isBot={false}

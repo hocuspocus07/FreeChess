@@ -6,6 +6,9 @@ import RecentMatchesTable from '../components/RecentMatchesTable.jsx';
 import MatchStats from '../components/MatchStats.jsx';
 import FriendList from '../components/FriendList.jsx';
 import { sendFriendRequest, getFriendshipStatus } from '../api.js';
+import PostGameCard from '../components/PostGameCard.jsx';
+import { getGameDetails, getMoves, getUserDetails } from '../api.js';
+import { Chess } from 'chess.js'; 
 const UserProfile = () => {
   const { userId } = useParams(); // Get userId from the URL
   const [user, setUser] = useState(null);
@@ -17,7 +20,14 @@ const UserProfile = () => {
   const [friendRequestError, setFriendRequestError] = useState('');
   const signedInUserId = localStorage.getItem('userId');
   const [friendshipStatus, setFriendshipStatus] = useState('loading');
-
+const [showPostGameCard, setShowPostGameCard] = useState(false);
+  const [selectedGameResult, setSelectedGameResult] = useState(null);
+  const [moves, setMoves] = useState([]);
+    const [currentMoveIndex, setCurrentMoveIndex] = useState(-1);
+    const [game, setGame] = useState(new Chess());
+      const [selectedGame, setSelectedGame] = useState(null);
+    
+  
   useEffect(() => {
     if (userId !== signedInUserId) {
       getFriendshipStatus(userId).then(setFriendshipStatus);
@@ -79,14 +89,113 @@ const UserProfile = () => {
     console.log(`Challenging user: ${user.username}`);
     // Implement challenge logic here
   };
-  const handleMatchClick = (gameId) => {
+
+  const fetchUsername = async (id) => {
+    if (id === -1) return 'ChessBot';
+    if (id === userId) return user.username || 'You';
     try {
-      navigate(`/replay/${gameId}`);
-    } catch (error) {
-      console.error('Failed to navigate to replay page:', error);
-      setError('Failed to navigate to replay page.');
+      const res = await getUserDetails(id);
+      return res?.user?.username || 'Opponent';
+    } catch {
+      return 'Opponent';
     }
   };
+
+  const handleMatchClick = async (gameId) => {
+      try {
+        const [gameDetailsResponse, movesResponse] = await Promise.all([
+        getGameDetails(gameId),
+        getMoves(gameId)
+      ]);
+        const gameDetails = gameDetailsResponse.game; // <-- FIX HERE
+        if (!gameDetails) {
+          throw new Error('Game details not found');
+        }
+        console.log('Game details:', gameDetails);
+    
+        // Calculate time control from game duration
+        const timeControl = (() => {
+          const duration = (new Date(gameDetails.end_time) - new Date(gameDetails.start_time)) / 1000;
+          if (duration < 180) return 'Bullet';
+          if (duration <= 600) return 'Blitz';
+          return 'Rapid';
+        })();
+    
+        // Determine actual result based on status and winner_id
+        const determineResult = () => {
+          if (gameDetails.status === 'draw') return 'Draw';
+          if (gameDetails.winner_id === null) return 'Draw';
+          console.log(typeof gameDetails.winner_id,typeof userId)
+          return gameDetails.winner_id === userId ? 'Win' : 'Loss';
+        };
+    
+        const result = determineResult();
+    
+        // Determine win type based on game outcome
+        const determineWinType = () => {
+          if (result === 'Draw') return 'Draw';
+          if (!gameDetails.moves?.length) return 'Standard';
+          // Add logic here to detect checkmate, timeout, etc. if available
+          return 'Standard'; // Default if no specific win type detected
+        };
+    
+            const isUserPlayer1 = gameDetails.player1_id === userId;
+  
+            const [player1Username, player2Username] = await Promise.all([
+        fetchUsername(gameDetails.player1_id),
+        fetchUsername(gameDetails.player2_id)
+      ]);
+        const player1Data = {
+        id: gameDetails.player1_id,
+        username: player1Username,
+        profilePic: gameDetails.player1_id === userId ? (user.profilePic || '/default-user.png') : '/default-user.png',
+        rating: gameDetails.player1_id === userId ? (user.rating?.rapid || 0) : 0,
+        result: gameDetails.winner_id === null
+          ? 'Draw'
+          : gameDetails.winner_id === gameDetails.player1_id
+          ? 'Win'
+          : 'Loss'
+      };
+  
+      const player2Data = {
+        id: gameDetails.player2_id,
+        username: player2Username,
+        profilePic: gameDetails.player2_id === userId ? (user.profilePic || '/default-user.png') : '/default-user.png',
+        rating: gameDetails.player2_id === userId ? (user.rating?.rapid || 0) : 0,
+        result: gameDetails.winner_id === null
+          ? 'Draw'
+          : gameDetails.winner_id === gameDetails.player2_id
+          ? 'Win'
+          : 'Loss'
+      };
+  
+    
+        const gameResult = {
+        gameId,
+        player1: player1Data,
+        player2: player2Data,
+        timeControl,
+        result, // This will be 'Win', 'Loss', or 'Draw' for the current user
+        winType: determineWinType(),
+        moves: movesResponse.moves || [],
+        winnerId: gameDetails.winner_id,
+        currentUserId: userId,
+      };
+    
+        console.log('Processed game result:', gameResult);
+    
+        setSelectedGameResult(gameResult);
+        setMoves(movesResponse.moves || []);
+        setCurrentMoveIndex(-1);
+        setGame(new Chess());
+        setSelectedGame(gameId);
+        setShowPostGameCard(true);
+    
+      } catch (error) {
+        console.error('Failed to load game details:', error);
+        setError('Failed to load game details. Please try again.');
+      }
+    };
 
   if (loading) return <div className="text-center mt-8">Loading...</div>;
   if (error) return <div className="text-center mt-8 text-red-500">Error: {error}</div>;
@@ -94,6 +203,12 @@ const UserProfile = () => {
   return (
     <div className='min-h-screen min-w-screen bg-[#2c2c2c]'>
       <NavBar />
+      {showPostGameCard && selectedGameResult && (
+        <PostGameCard
+          gameResult={selectedGameResult}
+          onClose={() => setShowPostGameCard(false)}
+        />
+      )}
       <div className="max-w-4xl mx-auto mt-9">
         <div className="bg-[#2c2c2c] rounded-lg p-6 mb-6 shadow-lg">
           <h1 className="text-3xl font-extrabold mb-2 text-lime-500">{user.username}</h1>

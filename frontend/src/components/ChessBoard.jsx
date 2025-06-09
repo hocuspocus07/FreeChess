@@ -8,7 +8,7 @@ import MoveLog from './MoveLog.jsx';
 import PostGameCard from './PostGameCard.jsx';
 import MaterialAdvantage from './MaterialAdvantage.jsx';
 
-const ChessBoard = ({ isBotGame, botRating, timeControl, isViewOnly, gameId, userId, socket, player1_id, player2_id }) => {
+const ChessBoard = ({ isBotGame, botRating, timeControl, isViewOnly, gameId, userId, socket, player1_id, player2_id,player1_username = "Player 1", player2_username = "Player 2" }) => {
   const [game, setGame] = useState(new Chess());
   const queryParams = new URLSearchParams(location.search);
   const isReplay = queryParams.get('replay') === 'true';
@@ -182,7 +182,7 @@ const ChessBoard = ({ isBotGame, botRating, timeControl, isViewOnly, gameId, use
       timeControl: timeControl,
       winnerId: winnerId,
       winType: 'Time Out',
-      moves: moveLog,
+      moves: moveHistoryPairs,
       gameId: gameId
     };
 
@@ -257,7 +257,7 @@ const ChessBoard = ({ isBotGame, botRating, timeControl, isViewOnly, gameId, use
         timeControl: timeControl,
         winnerId: winnerId,
         winType: winType,
-        moves: moveLog,
+        moves: moveHistoryPairs,
         gameId: gameId,
       };
 
@@ -437,7 +437,7 @@ for (let i = 0; i < moveLog.length; i += 2) {
       <div className="flex flex-col h-full justify-center items-center lg:flex-row w-full gap-6">
         <div className="bg-gray-900 rounded-lg p-6 flex flex-col mt-10 lg:mt-0">
           <UserInfo
-            playerName="Player 1"
+            playerName={player1_username}
             playerRating="1600"
             isTopPlayer={true}
             isBot={isBotGame}
@@ -471,7 +471,7 @@ for (let i = 0; i < moveLog.length; i += 2) {
             isTopPlayer={false}
           />
           <UserInfo
-            playerName="Player 2"
+            playerName={player2_username}
             playerRating="1600"
             isTopPlayer={false}
             isBot={false}

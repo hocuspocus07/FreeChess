@@ -1,23 +1,46 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 
-function PostGameCard({ gameResult,onClose }) {
-  const navigate=useNavigate();
-  
-  const { 
-    player1 = { username: 'Player 1', profilePic: 'user.png' },
-    player2 = { username: 'Player 2', profilePic: 'default-pfp.png' },
+function PostGameCard({ gameResult, onClose }) {
+  const navigate = useNavigate();
+console.log("here",gameResult);
+  // Destructure with sensible defaults
+  const {
+    player1 = { username: 'Player 1', profilePic: 'user.png', id: null },
+    player2 = { username: 'Player 2', profilePic: 'default-pfp.png', id: null },
     timeControl = 'Unknown',
     result = 'Unknown',
     winType = '',
-    gameId 
+    gameId,
+    winnerId,
+    currentUserId, // Pass this from parent if you want to highlight "You"
   } = gameResult || {};
 
   if (!gameId) {
     console.error("Game ID is missing in gameResult:", gameResult);
     return null;
   }
-  
+
+  let player1Result = '';
+  let player2Result = '';
+  if (winnerId === null || winnerId === undefined) {
+    player1Result = player2Result = 'Draw';
+  } else if (winnerId === player1.id) {
+    player1Result = 'Win';
+    player2Result = 'Loss';
+  } else if (winnerId === player2.id) {
+    player1Result = 'Loss';
+    player2Result = 'Win';
+  } else {
+    player1Result = player2Result = 'Unknown';
+  }
+
+  // Optionally highlight "You" if currentUserId is provided
+  const displayName = (player) =>
+    currentUserId && player.id === currentUserId
+      ? `${player.username} (You)`
+      : player.username;
+
   const navigateToReplay = () => {
     onClose();
     navigate(`/replay/${gameId}`);
@@ -31,28 +54,27 @@ function PostGameCard({ gameResult,onClose }) {
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
       <div className="bg-[#2c2c2c] rounded-lg shadow-lg p-6 max-w-md w-full text-white relative">
-    <div className='absolute top-4 right-6 h-10 w-auto text-white font-light hover:font-medium hover:cursor-pointer hover:text-lime-500' onClick={onClose}>✕</div>
+        <div className='absolute top-4 right-6 h-10 w-auto text-white font-light hover:font-medium hover:cursor-pointer hover:text-lime-500' onClick={onClose}>✕</div>
         <h2 className="text-2xl font-bold text-center mb-4">Game Result</h2>
 
         {/* Player vs Player Section */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center">
-            {console.log(player1,player2)};
             <img
-              src={player1.profilePic || "user.png"} // Fallback to a default image if no profile picture is provided
+              src={player1.profilePic || "user.png"}
               alt={player1.username}
               className="w-12 h-12 rounded-full mr-3"
             />
-            <span className="text-lg font-semibold">{player1.username}</span>
+              <span className="text-lg font-semibold">{displayName(player1)}</span>
           </div>
           <span className="text-xl mx-4">vs</span>
           <div className="flex items-center">
             <img
-              src={player2.profilePic || "default-pfp.png"} // Fallback to a default image if no profile picture is provided
+              src={player2.profilePic || "default-pfp.png"}
               alt={player2.username}
               className="w-12 h-12 rounded-full mr-3"
             />
-            <span className="text-lg font-semibold">{player2.username}</span>
+              <span className="text-lg font-semibold">{displayName(player2)}</span>
           </div>
         </div>
 
@@ -66,19 +88,23 @@ function PostGameCard({ gameResult,onClose }) {
             <span className="text-gray-400">Result:</span>
             <span
               className={`font-semibold ${
-                result === "Win"
+                winnerId === null || winnerId === undefined
+                  ? "text-[#ffc107]"
+                  : winnerId === player1.id
                   ? "text-[#7fa650]"
-                  : result === "Loss"
-                  ? "text-[#dc3545]"
-                  : "text-[#ffc107]"
+                  : "text-[#dc3545]"
               }`}
             >
-              {result}
+              {winnerId === null || winnerId === undefined
+                ? "Draw"
+                : winnerId === player1.id
+                ? `${displayName(player1)} wins`
+                : `${displayName(player2)} wins`}
             </span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-400">Win Type:</span>
-            <span className="font-semibold capitalize">{winType}</span>
+            <span className="font-semibold capitalize">{winType || '—'}</span>
           </div>
         </div>
 

@@ -113,13 +113,27 @@ const fetchRecentMatches = async () => {
     setSelectedTimeControl(null); // Reset the filter
   };
 
+  const fetchUsername = async (id) => {
+  if (id === -1) return 'ChessBot';
+  if (id === userId) return user.username || 'You';
+  try {
+    const res = await getUserDetails(id);
+    return res?.user?.username || 'Opponent';
+  } catch {
+    return 'Opponent';
+  }
+};
+
   const handleMatchClick = async (gameId) => {
     try {
-      const [gameDetails, movesResponse] = await Promise.all([
-        getGameDetails(gameId),
-        getMoves(gameId)
-      ]);
-  
+      const [gameDetailsResponse, movesResponse] = await Promise.all([
+      getGameDetails(gameId),
+      getMoves(gameId)
+    ]);
+      const gameDetails = gameDetailsResponse.game; // <-- FIX HERE
+      if (!gameDetails) {
+        throw new Error('Game details not found');
+      }
       console.log('Game details:', gameDetails);
   
       // Calculate time control from game duration
@@ -148,38 +162,48 @@ const fetchRecentMatches = async () => {
         return 'Standard'; // Default if no specific win type detected
       };
   
+          const isUserPlayer1 = gameDetails.player1_id === userId;
+
+          const [player1Username, player2Username] = await Promise.all([
+      fetchUsername(gameDetails.player1_id),
+      fetchUsername(gameDetails.player2_id)
+    ]);
       const player1Data = {
-        id: userId,
-        username: user.username || 'You',
-        profilePic: user.profilePic || '/default-user.png',
-        rating: user.rating?.rapid || 0,
-        result: result
-      };
-  
-      const player2Data = gameDetails.player2_id === -1 ? {
-        id: -1,
-        username: 'ChessBot',
-        profilePic: '/bot-icon.png',
-        rating: 1200,
-        result: result === 'Win' ? 'Loss' : result === 'Loss' ? 'Win' : 'Draw'
-      } : {
-        id: gameDetails.player2_id,
-        username: gameDetails.opponent_username || 'Opponent',
-        profilePic: '/default-user.png',
-        rating: 0,
-        result: result === 'Win' ? 'Loss' : result === 'Loss' ? 'Win' : 'Draw'
-      };
+      id: gameDetails.player1_id,
+      username: player1Username,
+      profilePic: gameDetails.player1_id === userId ? (user.profilePic || '/default-user.png') : '/default-user.png',
+      rating: gameDetails.player1_id === userId ? (user.rating?.rapid || 0) : 0,
+      result: gameDetails.winner_id === null
+        ? 'Draw'
+        : gameDetails.winner_id === gameDetails.player1_id
+        ? 'Win'
+        : 'Loss'
+    };
+
+    const player2Data = {
+      id: gameDetails.player2_id,
+      username: player2Username,
+      profilePic: gameDetails.player2_id === userId ? (user.profilePic || '/default-user.png') : '/default-user.png',
+      rating: gameDetails.player2_id === userId ? (user.rating?.rapid || 0) : 0,
+      result: gameDetails.winner_id === null
+        ? 'Draw'
+        : gameDetails.winner_id === gameDetails.player2_id
+        ? 'Win'
+        : 'Loss'
+    };
+
   
       const gameResult = {
-        gameId,
-        player1: player1Data,
-        player2: player2Data,
-        timeControl,
-        result, // This will be 'Win', 'Loss', or 'Draw'
-        winType: determineWinType(),
-        moves: movesResponse.moves || [],
-        winnerId: gameDetails.winner_id
-      };
+      gameId,
+      player1: player1Data,
+      player2: player2Data,
+      timeControl,
+      result, // This will be 'Win', 'Loss', or 'Draw' for the current user
+      winType: determineWinType(),
+      moves: movesResponse.moves || [],
+      winnerId: gameDetails.winner_id,
+      currentUserId: userId,
+    };
   
       console.log('Processed game result:', gameResult);
   
