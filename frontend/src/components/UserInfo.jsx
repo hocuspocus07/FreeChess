@@ -1,6 +1,6 @@
-import React from 'react';
+import React,{useEffect,useState} from 'react';
 import { ClockIcon } from '@heroicons/react/24/outline';
-
+import { getUserProfilePic } from '../api.js';
 const UserInfo = ({ 
   playerName, 
   playerRating, 
@@ -8,8 +8,28 @@ const UserInfo = ({
   isBot, 
   botRating,
   isTopPlayer,
-  isCurrentTurn  // Add this prop to highlight active player
+  isCurrentTurn,
+  userId
 }) => {
+
+   const [profilePic, setProfilePic] = useState("/avatar/6.png");
+
+  useEffect(() => {
+    const fetchProfilePic = async () => {
+      if (!isBot && userId) { 
+        try {
+          const pic = await getUserProfilePic(userId);
+          setProfilePic(pic ? `/avatar/${pic}` : "/avatar/6.png");
+        } catch (error) {
+          console.error("Error fetching profile picture:", error);
+          setProfilePic("/avatar/6.png");
+        }
+      }
+    };
+
+    fetchProfilePic();
+  }, [userId, isBot]);
+
   const formatTime = (seconds) => {
   if (seconds === undefined || seconds === null) return '--:--';
   
@@ -31,7 +51,7 @@ const UserInfo = ({
       isCurrentTurn ? 'ring-2 ring-blue-500' : ''
     }`}>
       <img
-        src={isBot ? "/bot.png" : "/user.png"}
+        src={isBot ? "/bot.png" : profilePic}
         alt={isBot ? "Bot" : "Player"}
         className="w-12 h-12 bg-white mr-3 rounded-full"
       />

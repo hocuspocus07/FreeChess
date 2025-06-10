@@ -19,7 +19,7 @@ class User {
 
   static async findById(id) {
     const [rows] = await pool.query(
-      "SELECT id, username, email, created_at FROM users WHERE id = ?",
+      "SELECT id, username, email, created_at, avatar AS profilePic FROM users WHERE id = ?",
       [id]
     );
     return rows[0];
@@ -89,7 +89,7 @@ class User {
 
   static async getFriends(userId) {
     const [rows] = await pool.query(
-      `SELECT u.id, u.username, u.email
+      `SELECT u.id, u.username, u.email, u.avatar AS profilePic
      FROM friends f
      JOIN users u ON (
        (f.user_id = ? AND u.id = f.friend_id)
@@ -121,6 +121,13 @@ class User {
     );
     return rows[0]?.status || null;
   }
+//user avatar
+  static async updateAvatar(userId, avatar) {
+  await pool.query("UPDATE users SET avatar = ? WHERE id = ?", [
+    avatar,
+    userId,
+  ]);
+}
 }
 
 export default User;

@@ -115,8 +115,7 @@ export const getGamesByUser = async (req, res) => {
     const games = await Game.findByUserId(userId);
     if (!games || games.length === 0) {
       return res.status(200).json({ games: [] }); // Return empty array instead of 404
-    }
-    console.log('Games fetched:', games); 
+    } 
 
     const gamesWithOpponents = await Promise.all(
       games.map(async (game) => {

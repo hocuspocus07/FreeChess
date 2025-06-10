@@ -9,6 +9,7 @@ import { sendFriendRequest, getFriendshipStatus } from '../api.js';
 import PostGameCard from '../components/PostGameCard.jsx';
 import { getGameDetails, getMoves, getUserDetails } from '../api.js';
 import { Chess } from 'chess.js'; 
+import ProfilePicMenu from '../components/ProfilePicMenu.jsx';
 const UserProfile = () => {
   const { userId } = useParams(); // Get userId from the URL
   const [user, setUser] = useState(null);
@@ -26,7 +27,7 @@ const [showPostGameCard, setShowPostGameCard] = useState(false);
     const [currentMoveIndex, setCurrentMoveIndex] = useState(-1);
     const [game, setGame] = useState(new Chess());
       const [selectedGame, setSelectedGame] = useState(null);
-    
+      const [showPicModal, setShowPicModal] = useState(false);
   
   useEffect(() => {
     if (userId !== signedInUserId) {
@@ -209,10 +210,25 @@ const [showPostGameCard, setShowPostGameCard] = useState(false);
           onClose={() => setShowPostGameCard(false)}
         />
       )}
-      <div className="max-w-4xl mx-auto mt-9">
+      <div className="max-w-4xl mx-auto mt-11">
         <div className="bg-[#2c2c2c] rounded-lg p-6 mb-6 shadow-lg">
+          <div className="flex justify-center items-center mb-2">
+            <div className='h-auto w-auto mr-2 sm:mr-4'>
+            <ProfilePicMenu
+              profilePic={user.profilePic}
+              onView={() => setShowPicModal(true)}
+              onChange={() => setShowAvatarSelector(true)}
+              isOwnProfile={false}
+            /></div>
+            <div>
           <h1 className="text-3xl font-extrabold mb-2 text-lime-500">{user.username}</h1>
-          <p className="text-gray-400">Joined on {new Date(user.created_at).toLocaleDateString()}</p>
+          <p className="text-gray-400">Joined on {new Date(user.created_at).toLocaleDateString()}</p></div>
+          </div>
+          {showPicModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50" onClick={() => setShowPicModal(false)}>
+            <img src={`/avatar/${user.profilePic}`} alt="Profile" className="w-48 h-48 rounded-full border-4 border-lime-400 bg-white" />
+          </div>
+        )}
           <FriendList isOwnProfile={userId === signedInUserId} userId={userId} />
           {userId !== signedInUserId && (
             <>

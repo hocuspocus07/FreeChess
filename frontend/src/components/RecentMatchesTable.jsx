@@ -125,7 +125,6 @@ const RecentMatchesTable = ({
                         }`}
                     >
                       {resultList[result]}
-                      {console.log(result)}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-center">

@@ -9,7 +9,8 @@ import PostGameCard from '../components/PostGameCard.jsx';
 import MatchStats from '../components/MatchStats.jsx';
 import Loading from '../components/Loading.jsx';
 import FriendList from '../components/FriendList.jsx';
-
+import UpdateAvatar from '../components/UpdateAvatar.jsx';
+import ProfilePicMenu from '../components/ProfilePicMenu.jsx';
 const getUserIdFromToken = () => {
   const token = localStorage.getItem('token');
   if (!token) return null;
@@ -33,6 +34,8 @@ export default function UserDashboard() {
       rapid: 0
     }
   });
+  const [showPicModal, setShowPicModal] = useState(false);
+  const [avatarUpdateSignal, setAvatarUpdateSignal] = useState(0);
   const [recentMatches, setRecentMatches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -43,6 +46,7 @@ export default function UserDashboard() {
   const [selectedTimeControl, setSelectedTimeControl] = useState(null);
   const [showPostGameCard, setShowPostGameCard] = useState(false);
   const [selectedGameResult, setSelectedGameResult] = useState(null);
+  const [showAvatarSelector, setShowAvatarSelector] = useState(false);
   const userId = getUserIdFromToken();
   const navigate = useNavigate();
 
@@ -58,52 +62,52 @@ export default function UserDashboard() {
   }, [userId]);
 
   // Update your fetchUserDetails function
-const fetchUserDetails = async () => {
-  try {
-    const response = await getUserDetails(userId);
-    if (!response || !response.user) {
-      throw new Error('Invalid user data received');
+  const fetchUserDetails = async () => {
+    try {
+      const response = await getUserDetails(userId);
+      if (!response || !response.user) {
+        throw new Error('Invalid user data received');
+      }
+      setUser({
+        username: response.user.username,
+        dateJoined: response.user.created_at,
+        rating: response.user.rating || {
+          bullet: 0,
+          blitz: 0,
+          rapid: 0
+        },
+        profilePic: response.user.profilePic || '/default-user.png'
+      });
+    } catch (error) {
+      console.error('Failed to fetch user details:', error);
+      setError(error.message || 'Failed to fetch user details');
+    } finally {
+      setLoading(false);
     }
-    setUser({
-      username: response.user.username,
-      dateJoined: response.user.created_at,
-      rating: response.user.rating || {
-        bullet: 0,
-        blitz: 0,
-        rapid: 0
-      },
-      profilePic: response.user.profilePic || '/default-user.png'
-    });
-  } catch (error) {
-    console.error('Failed to fetch user details:', error);
-    setError(error.message || 'Failed to fetch user details');
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
-const fetchRecentMatches = async () => {
-  try {
-    const response = await getAllGamesByUser(userId);
-    const games = response?.games || [];
-    // Add null check for response and response.games
-    if (!response || !response.games) {
-      throw new Error('No games data received');
+  const fetchRecentMatches = async () => {
+    try {
+      const response = await getAllGamesByUser(userId);
+      const games = response?.games || [];
+      // Add null check for response and response.games
+      if (!response || !response.games) {
+        throw new Error('No games data received');
+      }
+
+      setRecentMatches(games);
+
+      if (games.length === 0) {
+        console.log('No recent matches found');
+        // You could set a state here to show "No matches found" in UI
+      }
+
+    } catch (error) {
+      console.error('Failed to fetch recent matches:', error);
+      setError('Failed to fetch recent matches. Please try again later.');
+      setRecentMatches([]); // Set to empty array on error
     }
-
-    setRecentMatches(games);
-    
-    if (games.length === 0) {
-      console.log('No recent matches found');
-      // You could set a state here to show "No matches found" in UI
-    }
-
-  } catch (error) {
-    console.error('Failed to fetch recent matches:', error);
-    setError('Failed to fetch recent matches. Please try again later.');
-    setRecentMatches([]); // Set to empty array on error
-  }
-};
+  };
 
   const handleTimeControlClick = (timeControl) => {
     setSelectedTimeControl(timeControl);
@@ -114,28 +118,28 @@ const fetchRecentMatches = async () => {
   };
 
   const fetchUsername = async (id) => {
-  if (id === -1) return 'ChessBot';
-  if (id === userId) return user.username || 'You';
-  try {
-    const res = await getUserDetails(id);
-    return res?.user?.username || 'Opponent';
-  } catch {
-    return 'Opponent';
-  }
-};
+    if (id === -1) return 'ChessBot';
+    if (id === userId) return user.username || 'You';
+    try {
+      const res = await getUserDetails(id);
+      return res?.user?.username || 'Opponent';
+    } catch {
+      return 'Opponent';
+    }
+  };
 
   const handleMatchClick = async (gameId) => {
     try {
       const [gameDetailsResponse, movesResponse] = await Promise.all([
-      getGameDetails(gameId),
-      getMoves(gameId)
-    ]);
+        getGameDetails(gameId),
+        getMoves(gameId)
+      ]);
       const gameDetails = gameDetailsResponse.game; // <-- FIX HERE
       if (!gameDetails) {
         throw new Error('Game details not found');
       }
       console.log('Game details:', gameDetails);
-  
+
       // Calculate time control from game duration
       const timeControl = (() => {
         const duration = (new Date(gameDetails.end_time) - new Date(gameDetails.start_time)) / 1000;
@@ -143,17 +147,17 @@ const fetchRecentMatches = async () => {
         if (duration <= 600) return 'Blitz';
         return 'Rapid';
       })();
-  
+
       // Determine actual result based on status and winner_id
       const determineResult = () => {
         if (gameDetails.status === 'draw') return 'Draw';
         if (gameDetails.winner_id === null) return 'Draw';
-        console.log(typeof gameDetails.winner_id,typeof userId)
+        console.log(typeof gameDetails.winner_id, typeof userId)
         return gameDetails.winner_id === userId ? 'Win' : 'Loss';
       };
-  
+
       const result = determineResult();
-  
+
       // Determine win type based on game outcome
       const determineWinType = () => {
         if (result === 'Draw') return 'Draw';
@@ -161,59 +165,59 @@ const fetchRecentMatches = async () => {
         // Add logic here to detect checkmate, timeout, etc. if available
         return 'Standard'; // Default if no specific win type detected
       };
-  
-          const isUserPlayer1 = gameDetails.player1_id === userId;
 
-          const [player1Username, player2Username] = await Promise.all([
-      fetchUsername(gameDetails.player1_id),
-      fetchUsername(gameDetails.player2_id)
-    ]);
+      const isUserPlayer1 = gameDetails.player1_id === userId;
+
+      const [player1Username, player2Username] = await Promise.all([
+        fetchUsername(gameDetails.player1_id),
+        fetchUsername(gameDetails.player2_id)
+      ]);
       const player1Data = {
-      id: gameDetails.player1_id,
-      username: player1Username,
-      profilePic: gameDetails.player1_id === userId ? (user.profilePic || '/default-user.png') : '/default-user.png',
-      rating: gameDetails.player1_id === userId ? (user.rating?.rapid || 0) : 0,
-      result: gameDetails.winner_id === null
-        ? 'Draw'
-        : gameDetails.winner_id === gameDetails.player1_id
-        ? 'Win'
-        : 'Loss'
-    };
+        id: gameDetails.player1_id,
+        username: player1Username,
+        profilePic: gameDetails.player1_id === userId ? (user.profilePic || '/default-user.png') : '/default-user.png',
+        rating: gameDetails.player1_id === userId ? (user.rating?.rapid || 0) : 0,
+        result: gameDetails.winner_id === null
+          ? 'Draw'
+          : gameDetails.winner_id === gameDetails.player1_id
+            ? 'Win'
+            : 'Loss'
+      };
 
-    const player2Data = {
-      id: gameDetails.player2_id,
-      username: player2Username,
-      profilePic: gameDetails.player2_id === userId ? (user.profilePic || '/default-user.png') : '/default-user.png',
-      rating: gameDetails.player2_id === userId ? (user.rating?.rapid || 0) : 0,
-      result: gameDetails.winner_id === null
-        ? 'Draw'
-        : gameDetails.winner_id === gameDetails.player2_id
-        ? 'Win'
-        : 'Loss'
-    };
+      const player2Data = {
+        id: gameDetails.player2_id,
+        username: player2Username,
+        profilePic: gameDetails.player2_id === userId ? (user.profilePic || '/default-user.png') : '/default-user.png',
+        rating: gameDetails.player2_id === userId ? (user.rating?.rapid || 0) : 0,
+        result: gameDetails.winner_id === null
+          ? 'Draw'
+          : gameDetails.winner_id === gameDetails.player2_id
+            ? 'Win'
+            : 'Loss'
+      };
 
-  
+
       const gameResult = {
-      gameId,
-      player1: player1Data,
-      player2: player2Data,
-      timeControl,
-      result, // This will be 'Win', 'Loss', or 'Draw' for the current user
-      winType: determineWinType(),
-      moves: movesResponse.moves || [],
-      winnerId: gameDetails.winner_id,
-      currentUserId: userId,
-    };
-  
+        gameId,
+        player1: player1Data,
+        player2: player2Data,
+        timeControl,
+        result, // This will be 'Win', 'Loss', or 'Draw' for the current user
+        winType: determineWinType(),
+        moves: movesResponse.moves || [],
+        winnerId: gameDetails.winner_id,
+        currentUserId: userId,
+      };
+
       console.log('Processed game result:', gameResult);
-  
+
       setSelectedGameResult(gameResult);
       setMoves(movesResponse.moves || []);
       setCurrentMoveIndex(-1);
       setGame(new Chess());
       setSelectedGame(gameId);
       setShowPostGameCard(true);
-  
+
     } catch (error) {
       console.error('Failed to load game details:', error);
       setError('Failed to load game details. Please try again.');
@@ -221,7 +225,7 @@ const fetchRecentMatches = async () => {
   };
 
   if (loading) {
-    return <Loading text='Loading'/>;
+    return <Loading text='Loading' />;
   }
 
   if (error) {
@@ -236,19 +240,46 @@ const fetchRecentMatches = async () => {
   }
   return (
     <div className="min-h-screen bg-[#1a1a1a] text-white font-sans">
-      <NavBar />
+      <NavBar avatarUpdateSignal={avatarUpdateSignal} />
       {showPostGameCard && selectedGameResult && (
         <PostGameCard
           gameResult={selectedGameResult}
           onClose={() => setShowPostGameCard(false)}
         />
       )}
-      <div className="max-w-4xl mx-auto mt-9">
+      <div className="max-w-4xl mx-auto mt-11">
         <div className="bg-[#2c2c2c] rounded-lg p-6 mb-6 shadow-lg">
-          <h1 className="text-3xl font-extrabold mb-2">Welcome, {user.username}</h1>
-          <p className="text-gray-400">Joined on {new Date(user.created_at).toLocaleDateString()}</p>
+          <div className="flex justify-center items-center mb-2">
+            <div className='h-auto w-auto mr-2 sm:mr-4'>
+            <ProfilePicMenu
+              profilePic={user.profilePic}
+              onView={() => setShowPicModal(true)}
+              onChange={() => setShowAvatarSelector(true)}
+              isOwnProfile={true}
+            /></div>
+            <div>
+              <h1 className="text-3xl font-extrabold mb-2 text-lime-500">{user.username}</h1>
+              <p className="text-gray-400">Joined on {new Date(user.dateJoined).toLocaleDateString()}</p>
+            </div>
+          </div>
         </div>
-<FriendList isOwnProfile={true} userId={userId}/>
+        {showPicModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50" onClick={() => setShowPicModal(false)}>
+            <img src={`/avatar/${user.profilePic}`} alt="Profile" className="w-48 h-48 rounded-full border-4 border-lime-400 bg-white" />
+          </div>
+        )}
+        {showAvatarSelector && (
+          <UpdateAvatar
+            currentAvatar={user.profilePic}
+            userId={userId}
+            onUpdate={(newAvatar) => {
+              setUser(prev => ({ ...prev, profilePic: newAvatar }));
+              setShowAvatarSelector(false);
+              setAvatarUpdateSignal(s => s + 1);
+            }}
+          />
+        )}
+        <FriendList isOwnProfile={true} userId={userId} />
 
         <RecentMatchesTable
           matches={recentMatches}

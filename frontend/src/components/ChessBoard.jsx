@@ -443,6 +443,7 @@ for (let i = 0; i < moveLog.length; i += 2) {
             isBot={isBotGame}
             botRating={botRating}
             timeRemaining={blackTime} 
+              userId={player1_id}
           />
           <MaterialAdvantage
             capturedPieces={capturedPieces}
@@ -476,6 +477,7 @@ for (let i = 0; i < moveLog.length; i += 2) {
             isTopPlayer={false}
             isBot={false}
             timeRemaining={whiteTime}  
+            userId={player2_id}
           />
         </div>
         <div className='flex flex-col w-1/4 h-full'>

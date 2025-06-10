@@ -2,17 +2,26 @@ import React, { useEffect, useRef, Fragment, useState } from 'react';
 import { Transition } from '@headlessui/react';
 import { CheckIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { getFriendRequests, acceptFriendRequest, removeFriend } from '../api';
+import { getUserProfilePic } from '../api.js';
 
-function FriendRequests({ show, onClose }) {
+function FriendRequests({ show, onClose,onFriendChange }) {
   const [friendRequests, setFriendRequests] = useState([]);
   const requestsRef = useRef();
+  const [profilePics, setProfilePics] = useState("/avatar/6.png");
 
   const fetchFriendRequests = async () => {
     try {
       const data = await getFriendRequests();
       setFriendRequests(data);
+      const pics = {};
+      for (const req of data) {
+        const pic = await getUserProfilePic(req.user_id);
+        pics[req.user_id] = pic ? `/avatar/${pic}` : "/avatar/6.png";
+      }
+      setProfilePics(pics);
     } catch {
       setFriendRequests([]);
+      setProfilePics({});
     }
   };
 
@@ -37,12 +46,13 @@ function FriendRequests({ show, onClose }) {
 
   const handleAccept = async (friendId) => {
     await acceptFriendRequest(friendId);
-if (props.onFriendChange) props.onFriendChange();
+    if (onFriendChange) onFriendChange();
     fetchFriendRequests();
   };
 
   const handleDeny = async (friendId) => {
     await removeFriend(friendId);
+    if (onFriendChange) onFriendChange();
     fetchFriendRequests();
   };
 
@@ -59,17 +69,24 @@ if (props.onFriendChange) props.onFriendChange();
     >
       <div
         ref={requestsRef}
-        className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-xl z-50 p-4"
+        className="absolute right-0 mt-2 w-80 bg-gray-800 rounded-lg shadow-xl border-3 border-black z-50 p-4"
         style={{ top: '2.5rem' }}
       >
-        <h3 className="text-lg font-semibold mb-2 text-gray-800">Friend Requests</h3>
+        <h3 className="text-lg font-semibold mb-2 text-white">Friend Requests</h3>
         {friendRequests.length === 0 ? (
           <div className="text-gray-500 text-sm">No friend requests.</div>
         ) : (
           <ul>
             {friendRequests.map(req => (
               <li key={req.user_id} className="flex items-center justify-between py-2 border-b last:border-b-0">
-                <span className="text-gray-700">{req.username}</span>
+                <div className="flex items-center">
+                  <img
+                    src={profilePics[req.user_id] || "/avatar/6.png"}
+                    alt={req.username}
+                    className="w-8 h-8 rounded-full mr-2 bg-gray-200 border-1 border-white"
+                  />
+                  <span className="text-lime-500 font-bold">{req.username}</span>
+                </div>
                 <div className="flex gap-2">
                   <button
                     className="p-1 rounded-full bg-green-100 hover:bg-green-200"

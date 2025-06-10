@@ -11,7 +11,7 @@ import Loading from './Loading.jsx';
 import MaterialAdvantage from './MaterialAdvantage.jsx';
 import { BackwardIcon, ForwardIcon } from '@heroicons/react/24/outline';
 import AnalysisResult from './AnalysisResult.jsx';
-
+import { getUserProfilePic,getUserDetails } from '../api.js';
 const ReplayGame = () => {
   const { gameId } = useParams();
   const [searchParams] = useSearchParams();
@@ -28,6 +28,11 @@ const ReplayGame = () => {
   const [loading, setLoading] = useState(false);
   const [currentMoveType, setCurrentMoveType] = useState(null);
   const [moveTypePosition, setMoveTypePosition] = useState(null);
+    const [blackPlayerPic, setBlackPlayerPic] = useState("/avatar/6.png");
+  const [whitePlayerPic, setWhitePlayerPic] = useState("/avatar/6.png");
+  const [blackPlayerName, setBlackPlayerName] = useState("Player 1"); 
+  const [whitePlayerName, setWhitePlayerName] = useState("Player 2"); 
+const [details, setDetails] = useState({});
 
   useEffect(() => {
     const fetchMoves = async () => {
@@ -36,6 +41,24 @@ const ReplayGame = () => {
         const movesResponse = await getMoves(gameId);
         setMoves(movesResponse);
         const gameDetails = await getGameDetails(gameId);
+              const detailsObj = gameDetails.game || gameDetails;
+setDetails(detailsObj);
+      if (details.player1_id) {
+        const [user1, pic1] = await Promise.all([
+          getUserDetails(details.player1_id),
+          getUserProfilePic(details.player1_id)
+        ]);
+        setWhitePlayerName(user1?.user?.username || "Player 1");
+        setWhitePlayerPic(pic1 ? `/avatar/${pic1}` : "/avatar/6.png");
+      }
+      if (details.player2_id) {
+        const [user2, pic2] = await Promise.all([
+          getUserDetails(details.player2_id),
+          getUserProfilePic(details.player2_id)
+        ]);
+        setBlackPlayerName(user2?.user?.username || "Player 2");
+        setBlackPlayerPic(pic2 ? `/avatar/${pic2}` : "/avatar/6.png");
+      }
         setInitialTimeControl(gameDetails.time_control || 600);
         if (movesResponse.length > 0) {
           // If we have moves, set initial times from first move's remaining_time
@@ -254,11 +277,12 @@ const ReplayGame = () => {
             </div>
 
             <UserInfo
-              playerName="Player 1"
+              playerName={whitePlayerName}
               playerRating="1600"
               isTopPlayer={true}
               isBot={false}
               timeRemaining={blackTime}
+              userId={details.player1_id}
             />
             <MaterialAdvantage
               capturedPieces={capturedPieces}
@@ -286,11 +310,12 @@ const ReplayGame = () => {
               isTopPlayer={false}
             />
             <UserInfo
-              playerName="Player 2"
+              playerName={blackPlayerName}
               playerRating="1600"
               isTopPlayer={false}
               isBot={false}
-              timeRemaining={whiteTime} 
+              timeRemaining={whiteTime}
+              userId={details.player2_id}
             />
           </div>
 

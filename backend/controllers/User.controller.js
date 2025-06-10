@@ -215,6 +215,7 @@ export const removeFriend = async (req, res) => {
 export const getFriends = async (req, res) => {
   const userId = req.user.id;
   const friends = await User.getFriends(userId);
+  console.log(friends);
   res.json({ friends });
 };
 
@@ -236,4 +237,17 @@ export const getFriendshipStatus = async (req, res) => {
   const status = await User.getFriendStatus(userId, otherUserId);
   if (!status) return res.json({ status: 'none' });
   return res.json({ status });
+};
+
+//update avatar
+export const updateUserAvatar = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { avatar } = req.body;
+    
+    await User.updateAvatar(userId, avatar);
+    res.status(200).json({ message: 'Avatar updated successfully' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update avatar' });
+  }
 };

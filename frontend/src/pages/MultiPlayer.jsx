@@ -22,11 +22,11 @@ function MultiPlayer() {
                         <div className="block absolute w-48 h-48 bottom-0 left-0 -mb-24 ml-3"
                             style={{ background: 'radial-gradient(black, transparent 60%)', transform: 'rotate3d(0, 0, 1, 20deg) scale3d(1, 0.6, 1)', opacity: '0.2' }}>
                         </div>
-                        <img className="relative h-40" src="/icon.png" alt="" />
+                        <img className="relative h-40" src="/king.png" alt="" />
                     </div>
-                    <div className="relative text-white px-6 pb-6 mt-4">
+                    {/* <div className="relative text-white px-6 pb-6 mt-4">
                         <span className="block opacity-75 -mb-1 text-xl">Users Online:</span>
-                    </div>
+                    </div> */}
                 </div>
             </div>
         </>

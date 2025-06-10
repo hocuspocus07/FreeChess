@@ -7,6 +7,7 @@ import { refreshAccessToken } from '../api.js';
 import MoveLog from '../components/MoveLog.jsx';
 import MaterialAdvantage from '../components/MaterialAdvantage.jsx';
 import UserInfo from '../components/UserInfo.jsx';
+import { getUserProfilePic } from '../api.js';
 
 const PlayOnline = () => {
   const [game, setGame] = useState(new Chess());
@@ -29,34 +30,55 @@ const PlayOnline = () => {
   const [lastMoveTime, setLastMoveTime] = useState(Date.now());
   const [timerInterval, setTimerInterval] = useState(null);
   const [hasJoinedQueue, setHasJoinedQueue] = useState(false);
-const [myUsername, setMyUsername] = useState('');
-const [opponentUsername, setOpponentUsername] = useState('');
-useEffect(() => {
-  const userId = localStorage.getItem('userId');
-  if (userId) {
-    fetch(`http://localhost:8000/chess/users/${userId}`)
-      .then(res => res.json())
-      .then(data => setMyUsername(data.user?.username || 'You'));
-  }
-}, []);
+  const [myUsername, setMyUsername] = useState('');
+  const [opponentUsername, setOpponentUsername] = useState('');
+  const [myProfilePic, setMyProfilePic] = useState('');
+  const [opponentProfilePic, setOpponentProfilePic] = useState('');
+  useEffect(() => {
+    const userId = localStorage.getItem('userId');
+    if (userId) {
+      fetch(`http://localhost:8000/chess/users/${userId}`)
+        .then(res => res.json())
+        .then(data => setMyUsername(data.user?.username || 'You'));
+    }
+  }, []);
 
-// Fetch opponent username when assigned:
-useEffect(() => {
-  if (opponentId) {
-    fetch(`http://localhost:8000/chess/users/${opponentId}`)
-      .then(res => res.json())
-      .then(data => setOpponentUsername(data.user?.username || 'Opponent'));
-  }
-}, [opponentId]);
-useEffect(() => {
-  if (!socket) return;
+  // Fetch opponent username when assigned:
+  useEffect(() => {
+    if (opponentId) {
+      fetch(`http://localhost:8000/chess/users/${opponentId}`)
+        .then(res => res.json())
+        .then(data => setOpponentUsername(data.user?.username || 'Opponent'));
+    }
+  }, [opponentId]);
+  useEffect(() => {
+    if (!socket) return;
 
-  if (hasJoinedQueue) {
-    socket.emit('joinMatchmaking');
-    setStatus('waiting');
-    setShowWaitingModal(true);
-  }
-}, [socket, hasJoinedQueue]);
+    if (hasJoinedQueue) {
+      socket.emit('joinMatchmaking');
+      setStatus('waiting');
+      setShowWaitingModal(true);
+    }
+  }, [socket, hasJoinedQueue]);
+
+  useEffect(() => {
+    const userId = localStorage.getItem('userId');
+    if (userId) {
+      fetch(`http://localhost:8000/chess/users/${userId}`)
+        .then(res => res.json())
+        .then(data => setMyUsername(data.user?.username || 'You'));
+      getUserProfilePic(userId).then(pic => setMyProfilePic(pic ? `/avatar/${pic}` : "/avatar/6.png"));
+    }
+  }, []);
+
+  useEffect(() => {
+    if (opponentId) {
+      fetch(`http://localhost:8000/chess/users/${opponentId}`)
+        .then(res => res.json())
+        .then(data => setOpponentUsername(data.user?.username || 'Opponent'));
+      getUserProfilePic(opponentId).then(pic => setOpponentProfilePic(pic ? `/avatar/${pic}` : "/avatar/6.png"));
+    }
+  }, [opponentId]);
 
   useEffect(() => {
     if (status !== 'active') {
@@ -123,61 +145,61 @@ useEffect(() => {
       moves: game.history({ verbose: true }),
     };
   };
-useEffect(() => {
-  if (!socket) return;
+  useEffect(() => {
+    if (!socket) return;
 
-  const handleMoveMade = ({ move, fen, currentTurn, moveHistory: serverMoveHistory,timeRemaining }) => {
-    try {
-      const newGame = new Chess(fen);
-      setGame(newGame);
-      setCurrentTurn(currentTurn === 'w' ? 'white' : 'black');
+    const handleMoveMade = ({ move, fen, currentTurn, moveHistory: serverMoveHistory, timeRemaining }) => {
+      try {
+        const newGame = new Chess(fen);
+        setGame(newGame);
+        setCurrentTurn(currentTurn === 'w' ? 'white' : 'black');
 
-      if (timeRemaining) {
-      setWhiteTime(timeRemaining.white);
-      setBlackTime(timeRemaining.black);
-      setLastMoveTime(Date.now());
-    }
+        if (timeRemaining) {
+          setWhiteTime(timeRemaining.white);
+          setBlackTime(timeRemaining.black);
+          setLastMoveTime(Date.now());
+        }
 
-      let updatedMoveHistory = [];
-    const moves = Array.isArray(serverMoveHistory) ? serverMoveHistory : newGame.history();
-    for (let i = 0; i < moves.length; i += 2) {
-      updatedMoveHistory.push({
-        number: Math.floor(i / 2) + 1,
-        white:typeof moves[i] === 'string' ? moves[i] : moves[i]?.white || '',
-    black: typeof moves[i + 1] === 'string' ? moves[i + 1] : moves[i + 1]?.black || '',
-      });
-    }
-      setMoveHistory(updatedMoveHistory);
-      setCurrentMoveIndex(updatedMoveHistory.length - 1);
+        let updatedMoveHistory = [];
+        const moves = Array.isArray(serverMoveHistory) ? serverMoveHistory : newGame.history();
+        for (let i = 0; i < moves.length; i += 2) {
+          updatedMoveHistory.push({
+            number: Math.floor(i / 2) + 1,
+            white: typeof moves[i] === 'string' ? moves[i] : moves[i]?.white || '',
+            black: typeof moves[i + 1] === 'string' ? moves[i + 1] : moves[i + 1]?.black || '',
+          });
+        }
+        setMoveHistory(updatedMoveHistory);
+        setCurrentMoveIndex(updatedMoveHistory.length - 1);
 
-      const gameState = getGameState(newGame);
-      if (gameState.isGameOver) {
-        setTimeout(() => {
-        const winnerId = gameState.isCheckmate
-          ? (gameState.turn === 'w' ? opponentId : userId)
-          : 'draw';
-        socket.emit('gameOver', {
-          gameId,
-          winnerId,
-          moveHistory: updatedMoveHistory
+        const gameState = getGameState(newGame);
+        if (gameState.isGameOver) {
+          setTimeout(() => {
+            const winnerId = gameState.isCheckmate
+              ? (gameState.turn === 'w' ? opponentId : userId)
+              : 'draw';
+            socket.emit('gameOver', {
+              gameId,
+              winnerId,
+              moveHistory: updatedMoveHistory
+            });
+            setStatus('ended');
+          }, 1000);
+        }
+      } catch (error) {
+        console.error('Error updating game:', error);
+        socket.emit('moveHistoryError', {
+          message: 'Failed to process move history',
+          gameId
         });
-        setStatus('ended');
-      }, 1000);
       }
-    } catch (error) {
-      console.error('Error updating game:', error);
-      socket.emit('moveHistoryError', {
-        message: 'Failed to process move history',
-        gameId
-      });
-    }
-  };
+    };
 
-  socket.on('moveMade', handleMoveMade);
-  return () => {
-    socket.off('moveMade', handleMoveMade);
-  };
-}, [socket, gameId, userId, opponentId]);
+    socket.on('moveMade', handleMoveMade);
+    return () => {
+      socket.off('moveMade', handleMoveMade);
+    };
+  }, [socket, gameId, userId, opponentId]);
 
 
   useEffect(() => {
@@ -420,7 +442,7 @@ useEffect(() => {
           finalWinnerId = null;
         }
 
-        if(moveHistory.length === 0) {
+        if (moveHistory.length === 0) {
           return;
         }
 
@@ -444,8 +466,8 @@ useEffect(() => {
           : 'Game ended in a draw!';
 
         setTimeout(() => {
-      alert(resultMessage);
-    }, 1000);
+          alert(resultMessage);
+        }, 1000);
       } catch (error) {
         console.error('Error ending game:', error);
       }
@@ -470,35 +492,35 @@ useEffect(() => {
 
   const handleResign = () => {
     if (window.confirm('Are you sure you want to resign?')) {
-      socket.emit('resignGame', { 
-      gameId,
-      resignerId: userId 
-    });
+      socket.emit('resignGame', {
+        gameId,
+        resignerId: userId
+      });
       setStatus('ended');
     }
   };
 
   const renderStatusMessage = () => {
-  switch (status) {
-    case 'connecting':
-      return (
-        <button
-          className="bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium"
-          onClick={() => setHasJoinedQueue(true)}
-        >
-          Find Opponent
-        </button>
-      );
-    case 'waiting':
-      return (
-        <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 text-center max-w-md w-full">
-          <p className="text-lg font-medium text-white">Waiting for opponent...</p>
-          <div className="mt-2 h-1 w-full bg-gray-700 rounded-full overflow-hidden">
-            <div className="h-full bg-indigo-500 rounded-full animate-pulse" style={{ width: '70%' }}></div>
+    switch (status) {
+      case 'connecting':
+        return (
+          <button
+            className="bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium"
+            onClick={() => setHasJoinedQueue(true)}
+          >
+            Find Opponent
+          </button>
+        );
+      case 'waiting':
+        return (
+          <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 text-center max-w-md w-full">
+            <p className="text-lg font-medium text-white">Waiting for opponent...</p>
+            <div className="mt-2 h-1 w-full bg-gray-700 rounded-full overflow-hidden">
+              <div className="h-full bg-indigo-500 rounded-full animate-pulse" style={{ width: '70%' }}></div>
+            </div>
+            {gameId && <p className="mt-2 text-sm text-gray-400">Game ID: {gameId}</p>}
           </div>
-          {gameId && <p className="mt-2 text-sm text-gray-400">Game ID: {gameId}</p>}
-        </div>
-      );
+        );
       case 'active':
         return (
           <div className="bg-white/5 backdrop-blur-sm rounded-lg p-3 text-center">
@@ -515,109 +537,111 @@ useEffect(() => {
   };
 
   return (
-  <div className="min-h-screen bg-[#1a1a1a] text-white font-sans">
-    <div className="max-w-4xl mx-auto mt-9 p-6 bg-[#2c2c2c] rounded-lg shadow-lg">
-      <header className="flex justify-between items-center mb-6">
-        <button
-          onClick={() => navigate('/multiplayer')}
-          className="flex items-center gap-1 text-indigo-400 hover:text-indigo-300 transition-colors"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
-          </svg>
-          <span className="font-medium">Back</span>
-        </button>
-        <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-500 to-purple-600 bg-clip-text text-transparent">
-          Online Chess
-        </h1>
-        <div className="w-5"></div>
-      </header>
-      <div className="flex flex-col lg:flex-row gap-6 bg-gray-900 p-5 rounded-lg">
-        <div className="flex flex-col justify-center sm:w-1/2 sm:h-auto">
-          <div className="w-full overflow-y-scroll mb-2">
+    <div className="min-h-screen bg-[#1a1a1a] text-white font-sans">
+      <div className="max-w-4xl mx-auto mt-9 p-6 bg-[#2c2c2c] rounded-lg shadow-lg">
+        <header className="flex justify-between items-center mb-6">
+          <button
+            onClick={() => navigate('/multiplayer')}
+            className="flex items-center gap-1 text-indigo-400 hover:text-indigo-300 transition-colors"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
+            </svg>
+            <span className="font-medium">Back</span>
+          </button>
+          <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-500 to-purple-600 bg-clip-text text-transparent">
+            Online Chess
+          </h1>
+          <div className="w-5"></div>
+        </header>
+        <div className="flex flex-col lg:flex-row gap-6 bg-gray-900 p-5 rounded-lg">
+          <div className="flex flex-col justify-center sm:w-1/2 sm:h-auto">
+            <div className="w-full overflow-y-scroll mb-2">
+              <MoveLog
+                moveHistory={moveHistory}
+                currentMoveIndex={currentMoveIndex}
+                checkOutMove={checkOutMove}
+                isMobile={true}
+              />
+            </div>
+            <UserInfo
+              playerName={opponentUsername}
+              playerRating="1600"
+              timeRemaining={playerColor === 'white' ? blackTime : whiteTime}
+              isBot={false}
+              isCurrentTurn={currentTurn !== playerColor}
+              userId={opponentId}
+            />
+            <MaterialAdvantage
+              capturedPieces={{
+                white: [],
+                black: []
+              }}
+              materialAdvantage={0}
+              isTopPlayer={true}
+            />
+            <div className="flex items-stretch mt-2">
+              <div className="flex-1">
+                <Chessboard
+                  position={game.fen()}
+                  onPieceDrop={onDrop}
+                  boardOrientation={playerColor || 'white'}
+                />
+              </div>
+            </div>
+            <MaterialAdvantage
+              capturedPieces={{
+                white: [],
+                black: []
+              }}
+              materialAdvantage={0}
+              isTopPlayer={false}
+            />
+            <UserInfo
+  playerName={myUsername}
+              playerRating="1600"
+              timeRemaining={playerColor === 'white' ? whiteTime : blackTime}
+              isBot={false}
+              isCurrentTurn={currentTurn === playerColor}
+              userId={userId}
+            />
+            {status === 'active' && (
+              <button
+                onClick={handleResign}
+                className="mt-4 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors shadow-md"
+              >
+                Resign
+              </button>
+            )}
+            {status === 'ended' && (
+              <div className="flex gap-3 mt-4">
+                <button
+                  onClick={() => window.location.reload()}
+                  className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors shadow-md"
+                >
+                  Play Again
+                </button>
+                <button
+                  onClick={() => navigate('/')}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors shadow-md"
+                >
+                  Main Menu
+                </button>
+              </div>
+            )}
+          </div>
+          <div className="flex flex-col lg:w-1/2">
             <MoveLog
               moveHistory={moveHistory}
               currentMoveIndex={currentMoveIndex}
               checkOutMove={checkOutMove}
-              isMobile={true}
+              isMobile={false}
             />
           </div>
-          <UserInfo
-            playerName={playerColor === 'white' ? opponentUsername : myUsername}
-            playerRating="1600"
-            timeRemaining={playerColor === 'white' ? blackTime : whiteTime}
-            isBot={false}
-            isCurrentTurn={currentTurn !== playerColor}
-          />
-          <MaterialAdvantage
-            capturedPieces={{
-              white: [],
-              black: []
-            }}
-            materialAdvantage={0}
-            isTopPlayer={true}
-          />
-          <div className="flex items-stretch mt-2">
-            <div className="flex-1">
-              <Chessboard
-                position={game.fen()}
-                onPieceDrop={onDrop}
-                boardOrientation={playerColor || 'white'}
-              />
-            </div>
-          </div>
-          <MaterialAdvantage
-            capturedPieces={{
-              white: [],
-              black: []
-            }}
-            materialAdvantage={0}
-            isTopPlayer={false}
-          />
-          <UserInfo
-            playerName={playerColor === 'white' ? myUsername : opponentUsername}
-            playerRating="1600"
-            timeRemaining={playerColor === 'white' ? whiteTime : blackTime}
-            isBot={false}
-            isCurrentTurn={currentTurn === playerColor}
-          />
-          {status === 'active' && (
-            <button
-              onClick={handleResign}
-              className="mt-4 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors shadow-md"
-            >
-              Resign
-            </button>
-          )}
-          {status === 'ended' && (
-            <div className="flex gap-3 mt-4">
-              <button
-                onClick={() => window.location.reload()}
-                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors shadow-md"
-              >
-                Play Again
-              </button>
-              <button
-                onClick={() => navigate('/')}
-                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors shadow-md"
-              >
-                Main Menu
-              </button>
-            </div>
-          )}
-        </div>
-        <div className="flex flex-col lg:w-1/2">
-          <MoveLog
-            moveHistory={moveHistory}
-            currentMoveIndex={currentMoveIndex}
-            checkOutMove={checkOutMove}
-            isMobile={false}
-          />
         </div>
       </div>
     </div>
-  </div>
-);
+  );
 };
 
 export default PlayOnline;

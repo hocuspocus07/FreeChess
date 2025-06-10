@@ -1,9 +1,9 @@
 import { Disclosure, DisclosureButton, DisclosurePanel, Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react';
 import { Bars3Icon, BellIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import Search from './Search.jsx';
-import { logoutUser,getFriendRequests } from '../api.js';
+import { logoutUser, getFriendRequests, getUserProfilePic } from '../api.js';
 import { useNavigate, useLocation, href } from 'react-router-dom';
-import { useEffect, useState,useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import FriendRequests from './FriendRequests.jsx';
 
 const navigationList = [
@@ -19,15 +19,25 @@ function classNames(...classes) {
   return classes.filter(Boolean).join(' ');
 }
 
-export default function NavBar() {
+export default function NavBar({ avatarUpdateSignal }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [navigation, setNavigation] = useState(navigationList);
   const [showRequests, setShowRequests] = useState(false);
   const [friendRequests, setFriendRequests] = useState([]);
+  const [profilePic, setProfilePic] = useState("/avatar/6.png");
   const requestsRef = useRef();
-
+  useEffect(() => {
+    const fetchProfilePic = async () => {
+      const userId = localStorage.getItem('userId');
+      if (userId) {
+        const pic = await getUserProfilePic(userId);
+        setProfilePic(pic ? `/avatar/${pic}` : "/avatar/6.png");
+      }
+    };
+    fetchProfilePic();
+  }, [avatarUpdateSignal]);
   const fetchFriendRequests = async () => {
     try {
       const data = await getFriendRequests();
@@ -66,7 +76,16 @@ export default function NavBar() {
       console.error('Logout failed:', error);
     }
   };
-
+  useEffect(() => {
+    const fetchProfilePic = async () => {
+      const userId = localStorage.getItem('userId');
+      if (userId) {
+        const pic = await getUserProfilePic(userId);
+        setProfilePic(pic ? `/avatar/${pic}` : "/avatar/6.png");
+      }
+    };
+    fetchProfilePic();
+  }, []);
   return (
     <Disclosure as="nav" className="bg-gray-800 sm:bg-transparent w-screen top-0 fixed z-999">
       <div className="mx-auto max-w-7xl px-2 sm:px-6 lg:px-8">
@@ -83,7 +102,7 @@ export default function NavBar() {
             <div className="flex shrink-0 items-center">
               <img
                 alt="FreeChess"
-                src="/icon.jpg"
+                src="/king-icon.jpeg"
                 className="h-8 w-auto"
               />
             </div>
@@ -117,16 +136,25 @@ export default function NavBar() {
               <div className="hidden sm:block mr-6">
                 <Search />
               </div>
-              <button
-  type="button"
-  className="relative rounded-full bg-gray-800 p-1 text-gray-400 hover:text-white focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-gray-800 focus:outline-hidden"
-  onClick={() => setShowRequests((prev) => !prev)}
->
-  <span className="absolute -inset-1.5" />
-  <span className="sr-only">View Requests</span>
-  <BellIcon aria-hidden="true" className="size-6" />
-  <FriendRequests show={showRequests} onClose={() => setShowRequests(false)} />
-</button>
+              <div className="relative ml-3">
+                <button
+                  type="button"
+                  className="relative rounded-full bg-gray-800 p-1 text-gray-400 hover:text-white focus:outline-none"
+                  onClick={() => setShowRequests(!showRequests)}
+                >
+                  <BellIcon className="h-6 w-6" aria-hidden="true" />
+                </button>
+                {friendRequests.length > 0 && (
+                  <span className="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white transform translate-x-1/2 -translate-y-1/2 bg-red-600 rounded-full">
+                    {friendRequests.length > 9 ? '9+' : friendRequests.length}
+                  </span>
+                )}
+              </div>
+<FriendRequests 
+                show={showRequests} 
+                onClose={() => setShowRequests(false)}
+                onFriendChange={fetchFriendRequests}
+              />
               <Menu as="div" className="relative ml-3">
                 <div>
                   <MenuButton className="relative flex rounded-full bg-gray-800 text-sm focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-gray-800 focus:outline-hidden">
@@ -134,7 +162,7 @@ export default function NavBar() {
                     <span className="sr-only">Open user menu</span>
                     <img
                       alt=""
-                      src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"
+                      src={profilePic}
                       className="size-8 rounded-full"
                     />
                   </MenuButton>

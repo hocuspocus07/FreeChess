@@ -1,5 +1,5 @@
 import express,{Router} from 'express'
-import { registerUser,loginUser,getUserDetails,logoutUser,searchUsersByUsername,refreshAccessToken,sendFriendRequest,acceptFriendRequest,removeFriend,getFriendRequests,getFriends,getFriendsOfUser,getFriendshipStatus } from "../controllers/User.controller.js";
+import { registerUser,loginUser,getUserDetails,logoutUser,searchUsersByUsername,refreshAccessToken,sendFriendRequest,acceptFriendRequest,removeFriend,getFriendRequests,getFriends,getFriendsOfUser,getFriendshipStatus,updateUserAvatar } from "../controllers/User.controller.js";
 import { verifyJWT } from '../middleware/auth.middleware.js';
 const userRouter=Router()
 
@@ -18,4 +18,5 @@ userRouter.get('/friends/requests', verifyJWT, getFriendRequests);
 userRouter.get('/friendship-status/:otherUserId', verifyJWT,getFriendshipStatus);
 userRouter.get('/:userId/friends', getFriendsOfUser);
 userRouter.get('/:userId',getUserDetails);
+userRouter.patch('/:userId', verifyJWT, updateUserAvatar);
 export default userRouter;

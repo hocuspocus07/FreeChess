@@ -1,6 +1,23 @@
-import React from 'react';
+import React,{useState,useEffect} from 'react';
+import { getUserProfilePic } from '../api.js';
 
 function PopUp({ searchResults = [], onClose, onUserClick }) {
+    const [profilePics, setProfilePics] = useState({});
+
+    useEffect(() => {
+        const fetchProfilePics = async () => {
+            const pics = {};
+            for (const user of searchResults) {
+                const pic = await getUserProfilePic(user.id);
+                pics[user.id] = pic ? `/avatar/${pic}` : "/avatar/6.png";
+            }
+            setProfilePics(pics);
+        };
+        
+        if (searchResults.length > 0) {
+            fetchProfilePics();
+        }
+    }, [searchResults]);
     return (
         <>
             <div
@@ -40,10 +57,10 @@ function PopUp({ searchResults = [], onClose, onUserClick }) {
                             <ul>
                                 {searchResults.length > 0 ? (
                                     searchResults.map((user) => (
-                                        <div key={user.id} onClick={() => onUserClick(user.id)}  className='flex my-2 border-2 p-1 border-white rounded-xl hover:bg-white hover:cursor-pointer hover:text-black'>
-                                            <img src="user.png" alt="user profile" className='h-14 w-14 mx-2 bg-white' />
+                                        <div key={user.id} onClick={() => onUserClick(user.id)}  className='flex my-2 border-2 p-1 border-emerald-600 rounded-xl hover:bg-white hover:cursor-pointer hover:text-black'>
+                                            <img src={profilePics[user.id] || "/avatar/6.png"}  alt="user profile" className='h-14 rounded-full w-14 mx-2 bg-white' />
                                             <li
-                                                className="p-2 rounded font-bold"
+                                                className="p-2 rounded font-bold text-lime-500"
                                             >
                                                 {user.username}
                                             </li>
