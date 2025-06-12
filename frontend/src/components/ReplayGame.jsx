@@ -33,6 +33,8 @@ const ReplayGame = () => {
   const [blackPlayerName, setBlackPlayerName] = useState("Player 1"); 
   const [whitePlayerName, setWhitePlayerName] = useState("Player 2"); 
 const [details, setDetails] = useState({});
+const [whiteId, setWhiteId] = useState(null);
+const [blackId, setBlackId] = useState(null);
 
   useEffect(() => {
     const fetchMoves = async () => {
@@ -43,23 +45,32 @@ const [details, setDetails] = useState({});
         const gameDetails = await getGameDetails(gameId);
               const detailsObj = gameDetails.game || gameDetails;
 setDetails(detailsObj);
-      if (details.player1_id) {
-        const [user1, pic1] = await Promise.all([
-          getUserDetails(details.player1_id),
-          getUserProfilePic(details.player1_id)
-        ]);
-        setWhitePlayerName(user1?.user?.username || "Player 1");
-        setWhitePlayerPic(pic1 ? `/avatar/${pic1}` : "/avatar/6.png");
-      }
-      if (details.player2_id) {
-        const [user2, pic2] = await Promise.all([
-          getUserDetails(details.player2_id),
-          getUserProfilePic(details.player2_id)
-        ]);
-        setBlackPlayerName(user2?.user?.username || "Player 2");
-        setBlackPlayerPic(pic2 ? `/avatar/${pic2}` : "/avatar/6.png");
-      }
         setInitialTimeControl(gameDetails.time_control || 600);
+        let whiteId = detailsObj.player1_id;
+      let blackId = detailsObj.player2_id;
+      setWhiteId(whiteId);
+setBlackId(blackId);
+      if (movesResponse.length > 0) {
+        const firstMovePlayerId = movesResponse[0].player_id;
+        if (firstMovePlayerId === detailsObj.player1_id) {
+          whiteId = detailsObj.player1_id;
+          blackId = detailsObj.player2_id;
+        } else if (firstMovePlayerId === detailsObj.player2_id) {
+          whiteId = detailsObj.player2_id;
+          blackId = detailsObj.player1_id;
+        }
+      }
+      const [whiteUser, whitePic, blackUser, blackPic] = await Promise.all([
+        getUserDetails(whiteId),
+        getUserProfilePic(whiteId),
+        getUserDetails(blackId),
+        getUserProfilePic(blackId)
+      ]);
+      
+      setWhitePlayerName(whiteUser?.user?.username || "Player 1");
+      setWhitePlayerPic(whitePic ? `/avatar/${whitePic}` : "/avatar/6.png");
+      setBlackPlayerName(blackUser?.user?.username || "Player 2");
+      setBlackPlayerPic(blackPic ? `/avatar/${blackPic}` : "/avatar/6.png");
         if (movesResponse.length > 0) {
           // If we have moves, set initial times from first move's remaining_time
           const firstMove = movesResponse[0];
@@ -282,7 +293,7 @@ setDetails(detailsObj);
               isTopPlayer={true}
               isBot={false}
               timeRemaining={blackTime}
-              userId={details.player1_id}
+              userId={whiteId}
             />
             <MaterialAdvantage
               capturedPieces={capturedPieces}
@@ -315,7 +326,7 @@ setDetails(detailsObj);
               isTopPlayer={false}
               isBot={false}
               timeRemaining={whiteTime}
-              userId={details.player2_id}
+              userId={blackId}
             />
           </div>
 
@@ -342,7 +353,7 @@ setDetails(detailsObj);
             <ForwardIcon className='h-6 w-6' />
           </button>
         </div>
-            <AnalysisResult analysisResults={analysis || []} />
+            {analysisMode && <AnalysisResult analysisResults={analysis || []} />}
           </div>
         </div>
       </div>

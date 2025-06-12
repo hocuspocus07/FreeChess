@@ -32,7 +32,8 @@ export default function UserDashboard() {
       bullet: 0,
       blitz: 0,
       rapid: 0
-    }
+    },
+    profilePic: '6.png'
   });
   const [showPicModal, setShowPicModal] = useState(false);
   const [avatarUpdateSignal, setAvatarUpdateSignal] = useState(0);
@@ -61,7 +62,6 @@ export default function UserDashboard() {
     fetchRecentMatches();
   }, [userId]);
 
-  // Update your fetchUserDetails function
   const fetchUserDetails = async () => {
     try {
       const response = await getUserDetails(userId);
@@ -76,7 +76,7 @@ export default function UserDashboard() {
           blitz: 0,
           rapid: 0
         },
-        profilePic: response.user.profilePic || '/default-user.png'
+        profilePic: response.user.profilepic || '6.png'
       });
     } catch (error) {
       console.error('Failed to fetch user details:', error);
@@ -90,7 +90,6 @@ export default function UserDashboard() {
     try {
       const response = await getAllGamesByUser(userId);
       const games = response?.games || [];
-      // Add null check for response and response.games
       if (!response || !response.games) {
         throw new Error('No games data received');
       }
@@ -99,7 +98,6 @@ export default function UserDashboard() {
 
       if (games.length === 0) {
         console.log('No recent matches found');
-        // You could set a state here to show "No matches found" in UI
       }
 
     } catch (error) {
@@ -130,16 +128,22 @@ export default function UserDashboard() {
 
   const handleMatchClick = async (gameId) => {
     try {
-      const [gameDetailsResponse, movesResponse] = await Promise.all([
+      const [gameDetailsResponse, movesResponseRaw] = await Promise.all([
         getGameDetails(gameId),
         getMoves(gameId)
       ]);
-      const gameDetails = gameDetailsResponse.game; // <-- FIX HERE
+      const gameDetails = gameDetailsResponse.game;
       if (!gameDetails) {
         throw new Error('Game details not found');
       }
-      console.log('Game details:', gameDetails);
-
+      let movesResponse;
+      if (Array.isArray(movesResponseRaw)) {
+        movesResponse = { moves: movesResponseRaw };
+      } else if (Array.isArray(movesResponseRaw?.moves)) {
+        movesResponse = movesResponseRaw;
+      } else {
+        movesResponse = { moves: [] };
+      }
       // Calculate time control from game duration
       const timeControl = (() => {
         const duration = (new Date(gameDetails.end_time) - new Date(gameDetails.start_time)) / 1000;
@@ -160,10 +164,27 @@ export default function UserDashboard() {
 
       // Determine win type based on game outcome
       const determineWinType = () => {
-        if (result === 'Draw') return 'Draw';
-        if (!gameDetails.moves?.length) return 'Standard';
-        // Add logic here to detect checkmate, timeout, etc. if available
-        return 'Standard'; // Default if no specific win type detected
+        if (gameDetails.winner_id === null) return 'Draw';
+        const movesArr = movesResponse.moves;
+
+        if (movesArr.length > 0) {
+          const lastMove = movesArr[movesArr.length - 1];
+          if (lastMove?.checkmate) return 'Checkmate';
+          if (lastMove?.resigned) return 'Resignation';
+          if (lastMove?.timeout) return 'Timeout';
+          if (lastMove?.move && typeof lastMove.move === 'string' && lastMove.move.includes('#')) {
+            return 'Checkmate';
+          }
+        }
+        if (
+          gameDetails.player2_id === -1 &&
+          gameDetails.winner_id === gameDetails.player1_id &&
+          movesArr.length > 0
+        ) {
+          return 'Resignation';
+        }
+
+        return 'Standard';
       };
 
       const isUserPlayer1 = gameDetails.player1_id === userId;
@@ -175,7 +196,7 @@ export default function UserDashboard() {
       const player1Data = {
         id: gameDetails.player1_id,
         username: player1Username,
-        profilePic: gameDetails.player1_id === userId ? (user.profilePic || '/default-user.png') : '/default-user.png',
+        profilePic: gameDetails.player1_id === userId ? (user.profilePic || '/6.png') : '/6.png',
         rating: gameDetails.player1_id === userId ? (user.rating?.rapid || 0) : 0,
         result: gameDetails.winner_id === null
           ? 'Draw'
@@ -187,7 +208,7 @@ export default function UserDashboard() {
       const player2Data = {
         id: gameDetails.player2_id,
         username: player2Username,
-        profilePic: gameDetails.player2_id === userId ? (user.profilePic || '/default-user.png') : '/default-user.png',
+        profilePic: gameDetails.player2_id === userId ? (user.profilePic || '/6.png') : '/6.png',
         rating: gameDetails.player2_id === userId ? (user.rating?.rapid || 0) : 0,
         result: gameDetails.winner_id === null
           ? 'Draw'
@@ -251,12 +272,12 @@ export default function UserDashboard() {
         <div className="bg-[#2c2c2c] rounded-lg p-6 mb-6 shadow-lg">
           <div className="flex justify-center items-center mb-2">
             <div className='h-auto w-auto mr-2 sm:mr-4'>
-            <ProfilePicMenu
-              profilePic={user.profilePic}
-              onView={() => setShowPicModal(true)}
-              onChange={() => setShowAvatarSelector(true)}
-              isOwnProfile={true}
-            /></div>
+              <ProfilePicMenu
+                profilePic={user.profilePic}
+                onView={() => setShowPicModal(true)}
+                onChange={() => setShowAvatarSelector(true)}
+                isOwnProfile={true}
+              /></div>
             <div>
               <h1 className="text-3xl font-extrabold mb-2 text-lime-500">{user.username}</h1>
               <p className="text-gray-400">Joined on {new Date(user.dateJoined).toLocaleDateString()}</p>

@@ -3,17 +3,16 @@ import { useNavigate } from 'react-router-dom';
 
 function PostGameCard({ gameResult, onClose }) {
   const navigate = useNavigate();
-console.log("here",gameResult);
   // Destructure with sensible defaults
   const {
-    player1 = { username: 'Player 1', profilePic: 'user.png', id: null },
-    player2 = { username: 'Player 2', profilePic: 'default-pfp.png', id: null },
+    player1 = { username: 'Player 1', profilePic: '6.png', id: null },
+    player2 = { username: 'Player 2', profilePic: '6.png', id: null },
     timeControl = 'Unknown',
     result = 'Unknown',
     winType = '',
     gameId,
     winnerId,
-    currentUserId, // Pass this from parent if you want to highlight "You"
+    currentUserId, 
   } = gameResult || {};
 
   if (!gameId) {
@@ -35,7 +34,6 @@ console.log("here",gameResult);
     player1Result = player2Result = 'Unknown';
   }
 
-  // Optionally highlight "You" if currentUserId is provided
   const displayName = (player) =>
     currentUserId && player.id === currentUserId
       ? `${player.username} (You)`
@@ -61,7 +59,13 @@ console.log("here",gameResult);
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center">
             <img
-              src={player1.profilePic || "user.png"}
+              src={
+    player1.profilePic
+      ? `/avatar/${player1.profilePic}`
+      : player1.avatar
+        ? `/avatar/${player1.avatar}`
+        : "/avatar/6.png"
+  }
               alt={player1.username}
               className="w-12 h-12 rounded-full mr-3"
             />
@@ -70,7 +74,13 @@ console.log("here",gameResult);
           <span className="text-xl mx-4">vs</span>
           <div className="flex items-center">
             <img
-              src={player2.profilePic || "default-pfp.png"}
+              src={
+    player2.profilePic
+      ? `/avatar/${player2.profilePic}`
+      : player2.avatar
+        ? `/avatar/${player2.avatar}`
+        : "/avatar/6.png"
+  }
               alt={player2.username}
               className="w-12 h-12 rounded-full mr-3"
             />

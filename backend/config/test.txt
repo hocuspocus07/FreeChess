@@ -1,53 +1,74 @@
--- Create the database
-CREATE DATABASE chess_db;
-
--- Use the database
-USE chess_db;
-
--- Create the `users` table
-CREATE TABLE users (
-  id INT AUTO_INCREMENT PRIMARY KEY,
+-- Users table
+CREATE TABLE IF NOT EXISTS users (
+  id SERIAL PRIMARY KEY,
   username VARCHAR(15) NOT NULL UNIQUE,
   email VARCHAR(100) NOT NULL UNIQUE,
   password VARCHAR(100) NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  refreshToken VARCHAR(255),
+  avatar VARCHAR(255) DEFAULT '6.png'
 );
 
--- Create the `games` table
-CREATE TABLE games (
-  id INT AUTO_INCREMENT PRIMARY KEY,
+-- Games table
+CREATE TABLE IF NOT EXISTS games (
+  id SERIAL PRIMARY KEY,
   player1_id INT,
   player2_id INT,
   winner_id INT,
   status VARCHAR(20) DEFAULT 'ongoing',
   start_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  end_time TIMESTAMP,
-  FOREIGN KEY (player1_id) REFERENCES users(id),
-  FOREIGN KEY (player2_id) REFERENCES users(id),
-  FOREIGN KEY (winner_id) REFERENCES users(id)
+  end_time TIMESTAMP NULL DEFAULT NULL,
+  time_control INT DEFAULT 600,
+  FOREIGN KEY (player1_id) REFERENCES users(id) ON DELETE SET NULL,
+  FOREIGN KEY (player2_id) REFERENCES users(id) ON DELETE SET NULL,
+  FOREIGN KEY (winner_id) REFERENCES users(id) ON DELETE SET NULL
 );
 
--- Create the `moves` table
-CREATE TABLE moves (
-  id INT AUTO_INCREMENT PRIMARY KEY,
+-- Moves table
+CREATE TABLE IF NOT EXISTS moves (
+  id SERIAL PRIMARY KEY,
   game_id INT,
   player_id INT,
   move_number INT,
   move VARCHAR(10) NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (game_id) REFERENCES games(id),
-  FOREIGN KEY (player_id) REFERENCES users(id)
+  remaining_time INT NOT NULL,
+  FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
+  FOREIGN KEY (player_id) REFERENCES users(id) ON DELETE SET NULL
 );
 
---Create the 'friends' table
-CREATE TABLE friends (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
-    friend_id INT NOT NULL,
-    status ENUM('pending', 'accepted', 'declined', 'blocked') DEFAULT 'pending',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    UNIQUE KEY unique_friendship (user_id, friend_id),
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (friend_id) REFERENCES users(id) ON DELETE CASCADE
+-- Friends table
+CREATE TABLE IF NOT EXISTS friends (
+  id SERIAL PRIMARY KEY,
+  user_id INT NOT NULL,
+  friend_id INT NOT NULL,
+  status VARCHAR(10) DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'declined', 'blocked')),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE (user_id, friend_id),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (friend_id) REFERENCES users(id) ON DELETE CASCADE
 );
+
+-- Add indexes for better performance
+CREATE INDEX idx_games_player1 ON games(player1_id);
+CREATE INDEX idx_games_player2 ON games(player2_id);
+CREATE INDEX idx_games_winner ON games(winner_id);
+CREATE INDEX idx_moves_game ON moves(game_id);
+CREATE INDEX idx_moves_player ON moves(player_id);
+CREATE INDEX idx_friends_user ON friends(user_id);
+CREATE INDEX idx_friends_friend ON friends(friend_id);
+
+-- Function to update updated_at automatically
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER update_friends_updated_at
+BEFORE UPDATE ON friends
+FOR EACH ROW
+EXECUTE FUNCTION update_updated_at_column();

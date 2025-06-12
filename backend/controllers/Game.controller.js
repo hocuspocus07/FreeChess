@@ -7,24 +7,33 @@ import { Chess} from 'chess.js'
 const STOCKFISH_PATH = 'C:/Users/Lenovo/Desktop/coding/FreeChess/backend/stockfish/stockfish.exe';
 
 export const createGame = async (req, res) => {
-    const { player1_id, player2_id,winner_id,status,time_control } = req.body;
+    const { player1_id, player2_id, winner_id, status, time_control } = req.body;
     const userId = req.user.id;
-  
+
     if (userId != player1_id) {
       return res.status(403).json({ error: 'You are not authorized to create this game.' });
     }
-  
+
     try {
       const validTimeControls = [60, 180, 600];
-      const selectedTime = validTimeControls.includes(parseInt(time_control)) 
-        ? parseInt(time_control) 
+      const selectedTime = validTimeControls.includes(parseInt(time_control))
+        ? parseInt(time_control)
         : 600;
-      const gameId = await Game.create(player1_id, player2_id,winner_id,status,selectedTime);
-      res.status(201).json({ message: 'Game created successfully', gameId,time_control:selectedTime });
+      console.log('About to create game:', player1_id, player2_id, winner_id, status, selectedTime);
+      const gameId = await Game.create(
+        player1_id,
+        player2_id,
+        winner_id ?? null,
+        status ?? 'ongoing',
+        selectedTime
+      );
+      console.log('Game created, ID:', gameId);
+      res.status(201).json({ message: 'Game created successfully', gameId, time_control: selectedTime });
     } catch (error) {
+      console.error('Create game error:', error);
       res.status(500).json({ error: 'Failed to create game', details: error.message });
     }
-  };
+};
 
 export const getGameDetails=async (req,res)=>{
     const {gameId}=req.params;
@@ -268,19 +277,19 @@ export const saveBotGame=async(req,res)=>{
   const { player1_id, player2_id, winner_id, status, moves } = req.body;
 
   try {
-    const newGame = await Game.create(
-      player1_id,
-      player2_id,
-      winner_id,
-      status);
-    const gameId = newGame.insertId;
+    const gameId = await Game.create(
+  player1_id,
+  player2_id,
+  winner_id,
+  status
+);
     for (let i = 0; i < moves.length; i++) {
       const moveNumber = i + 1;
       const move = moves[i];
       await Move.create(gameId, player1_id, moveNumber, move); 
     }
 
-    res.status(200).json({ message: 'Match saved successfully', game: newGame });
+    res.status(200).json({ message: 'Match saved successfully', gameId });
   } catch (error) {
     console.error('Error saving match:', error);
     res.status(500).json({ message: 'Failed to save match' });

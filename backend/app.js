@@ -11,6 +11,7 @@ import Game from './models/Game.models.js'
 import dotenv from 'dotenv'
 import jwt from 'jsonwebtoken'
 import { Chess } from 'chess.js'
+import { deleteAbandonedGames } from './controllers/Game.controller.js'
 
 dotenv.config();
 
@@ -31,6 +32,10 @@ const io = new Server(server, {
     origin: "http://localhost:5173",
     methods: ["GET", "POST"]
   }
+});
+
+app.get('/', (req, res) => {
+  res.status(200).json({ status: 'ok', message: 'Backend is alive' });
 });
 
 // Track active games and waiting players
@@ -237,7 +242,27 @@ socket.on('gameOver', async ({ gameId, winnerId }) => {
       }
     }
   });
+
+  socket.on('leaveMatchmaking', () => {
+  if (socket.user) {
+    const userId = socket.user._id.toString();
+    if (waitingPlayers.get(userId)?.id === socket.id) {
+      waitingPlayers.delete(userId);
+      socket.emit('leftMatchmaking');
+    }
+  }
 });
+});
+
+//delete abandoned games
+setInterval(async () => {
+  try {
+    await deleteAbandonedGames({ }, { json: () => {}, status: () => ({ json: () => {} }) });
+    console.log('Abandoned games cleanup ran.');
+  } catch (err) {
+    console.error('Cleanup failed:', err);
+  }
+}, 600000);
 
 // Express middleware
 app.use(express.json());

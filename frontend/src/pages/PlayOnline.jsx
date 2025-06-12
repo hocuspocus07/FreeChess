@@ -8,6 +8,7 @@ import MoveLog from '../components/MoveLog.jsx';
 import MaterialAdvantage from '../components/MaterialAdvantage.jsx';
 import UserInfo from '../components/UserInfo.jsx';
 import { getUserProfilePic } from '../api.js';
+import Loading from '../components/Loading.jsx';
 
 const PlayOnline = () => {
   const [game, setGame] = useState(new Chess());
@@ -116,15 +117,18 @@ const PlayOnline = () => {
     return () => clearInterval(interval);
   }, [status, game, lastMoveTime, whiteTime, blackTime]);
 
-  const checkOutMove = (index) => {
+  const checkOutMove = (flatIndex) => {
     const gameCopy = new Chess();
-    moveHistory.slice(0, index + 1).forEach((entry) => {
-      if (entry.white) gameCopy.move(entry.white);
-      if (entry.black) gameCopy.move(entry.black);
+    let moveList = [];
+    moveHistory.forEach((entry) => {
+      if (entry.white) moveList.push(entry.white);
+      if (entry.black) moveList.push(entry.black);
     });
-
+    moveList.slice(0, flatIndex + 1).forEach((move) => {
+      gameCopy.move(move);
+    });
     setGame(gameCopy);
-    setCurrentMoveIndex(index);
+    setCurrentMoveIndex(flatIndex);
   };
   useEffect(() => {
     if (status === 'active') {
@@ -170,7 +174,12 @@ const PlayOnline = () => {
           });
         }
         setMoveHistory(updatedMoveHistory);
-        setCurrentMoveIndex(updatedMoveHistory.length - 1);
+        let flatMoveCount = 0;
+        updatedMoveHistory.forEach(entry => {
+          if (entry.white) flatMoveCount++;
+          if (entry.black) flatMoveCount++;
+        });
+        setCurrentMoveIndex(flatMoveCount - 1);
 
         const gameState = getGameState(newGame);
         if (gameState.isGameOver) {
@@ -201,6 +210,14 @@ const PlayOnline = () => {
     };
   }, [socket, gameId, userId, opponentId]);
 
+useEffect(() => {
+  return () => {
+    if (socket) {
+      socket.emit('leaveMatchmaking');
+      socket.disconnect();
+    }
+  };
+}, [socket]); 
 
   useEffect(() => {
     const initializeConnection = async () => {
@@ -538,17 +555,20 @@ const PlayOnline = () => {
 
   return (
     <div className="min-h-screen bg-[#1a1a1a] text-white font-sans">
-      <div className="max-w-4xl mx-auto mt-9 p-6 bg-[#2c2c2c] rounded-lg shadow-lg">
+      {status === 'waiting' && (
+        <Loading text="Waiting" />
+      )}
+      <div className="max-w-4xl mx-auto p-6 bg-[#2c2c2c] rounded-lg shadow-lg">
         <header className="flex justify-between items-center mb-6">
-          <button
-            onClick={() => navigate('/multiplayer')}
-            className="flex items-center gap-1 text-indigo-400 hover:text-indigo-300 transition-colors"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
-            </svg>
-            <span className="font-medium">Back</span>
-          </button>
+          {status === 'ended' && (
+            <button
+              onClick={() => navigate('/multiplayer')}
+              className="flex items-center gap-1 text-indigo-400 hover:text-indigo-300 transition-colors"
+            >
+              {/* ...svg... */}
+              <span className="font-medium">Back</span>
+            </button>
+          )}
           <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-500 to-purple-600 bg-clip-text text-transparent">
             Online Chess
           </h1>
@@ -598,7 +618,7 @@ const PlayOnline = () => {
               isTopPlayer={false}
             />
             <UserInfo
-  playerName={myUsername}
+              playerName={myUsername}
               playerRating="1600"
               timeRemaining={playerColor === 'white' ? whiteTime : blackTime}
               isBot={false}

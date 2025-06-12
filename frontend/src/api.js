@@ -424,8 +424,7 @@ export const updateUserAvatar = async (userId, avatar) => {
 export const getUserProfilePic = async (userId) => {
   try {
     const response = await axios.get(`${API_BASE_URL}/chess/users/${userId}`);
-    // The backend should return { user: { ..., profilePic: "6.png" } }
-    return response.data?.user?.profilePic || null;
+    return response.data?.user?.profilepic || null;
   } catch (error) {
     console.error('Error fetching user profile picture:', error);
     return null;

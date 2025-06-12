@@ -39,8 +39,7 @@ const analyzeMove = async (fen, move) => {
           resolve({
             bestMove,
             evaluation,
-            isMistake: evaluation < -200, // Example threshold
-            // Add other analysis flags
+            isMistake: evaluation < -200,
           });
         } else {
           reject(new Error('Incomplete analysis'));
