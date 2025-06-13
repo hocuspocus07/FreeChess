@@ -1,5 +1,5 @@
 import axios from 'axios';
-const API_BASE_URL = 'http://localhost:8000'; 
+export const API_BASE_URL = 'http://localhost:8000'; 
 
 export const registerUser = async (userData) => {
   try {
@@ -89,7 +89,7 @@ export const createGame = async (gameData) => {
 
 export const getGameDetails = async (gameId) => {
   try {
-    const response = await fetch(`http://localhost:8000/chess/game/${gameId}`, {
+    const response = await fetch(`${API_BASE_URL}/chess/game/${gameId}`, {
       headers: {
         'Authorization': `Bearer ${localStorage.getItem('token')}`
       }
@@ -148,7 +148,7 @@ export const setGameWinner = async (gameId, winnerId) => {
 export const addMove = async (gameId, moveData) => {
   try {
     const response = await axios.post(
-      `${API_BASE_URL}/chess/moves/${gameId}/moves`,
+      `${API_BASE_URL}/chess/game/${gameId}/moves`,
       moveData,
       {
         headers: {
@@ -211,7 +211,7 @@ export const refreshAccessToken = async () => {
     }
 
     const response = await axios.post(
-      'http://localhost:8000/chess/users/refresh-token',
+      `${API_BASE_URL}/chess/users/refresh-token`,
       {}, // empty body since refresh token is in cookies
       {
         withCredentials: true // important for cookies
@@ -429,4 +429,39 @@ export const getUserProfilePic = async (userId) => {
     console.error('Error fetching user profile picture:', error);
     return null;
   }
+};
+
+export const searchUsers = async (query) => {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/chess/users/search`, {
+      params: { query },
+      withCredentials: true
+    });
+    return response.data.users || [];
+  } catch (error) {
+    return [];
+  }
+};
+
+export const endGame = async (gameId, winnerId, status) => {
+  const response = await fetch(`${API_BASE_URL}/chess/game/${gameId}/end`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${localStorage.getItem('token')}`
+    },
+    body: JSON.stringify({ winnerId, status })
+  });
+  if (!response.ok) throw new Error('Failed to end game');
+  return response.json();
+};
+
+export const getBotMove = async ({ fen, botRating, gameId, playerId }) => {
+  const response = await fetch(`${API_BASE_URL}/chess/game/bot-move`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fen, botRating, gameId, playerId }),
+  });
+  if (!response.ok) throw new Error('Failed to get bot move');
+  return response.json();
 };

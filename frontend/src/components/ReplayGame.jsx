@@ -258,8 +258,11 @@ setBlackId(blackId);
       default: return 0;
     }
   };
-  if (loading) {
+  if (loading && analysisMode) {
     return <Loading text='Analysing' />;
+  }
+  if (loading && !analysisMode) {
+    return <Loading text='Loading' />;
   }
   const currentEvaluation = analysisMode && analysis && currentMoveIndex >= 0
     ? analysis.find(a => a.moveId === moves[currentMoveIndex]?.id)?.evaluation || materialAdvantage

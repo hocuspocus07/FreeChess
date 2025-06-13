@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { Slider, Select, MenuItem, Button } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import {jwtDecode} from 'jwt-decode';
+import { jwtDecode } from 'jwt-decode';
 import NavBar from '../components/NavBar.jsx';
-import { refreshAccessToken } from '../api.js';
+import { refreshAccessToken, createGame } from '../api.js';
 
 const PlayBot = () => {
   const TIME_CONTROLS = {
@@ -11,8 +11,8 @@ const PlayBot = () => {
     '3min': 180,
     '10min': 600
   };
-    const [selectedTimeControl, setSelectedTimeControl] = useState('3min');
-  const [botRating, setBotRating] = useState(1500); 
+  const [selectedTimeControl, setSelectedTimeControl] = useState('3min');
+  const [botRating, setBotRating] = useState(1500);
   const [timeControl, setTimeControl] = useState(3);
   const navigate = useNavigate();
 
@@ -29,7 +29,7 @@ const PlayBot = () => {
   const handleStartGame = async () => {
     try {
       let token = localStorage.getItem('token');
-      
+
       // Verify token is still valid
       try {
         jwtDecode(token);
@@ -37,33 +37,23 @@ const PlayBot = () => {
         console.log('Token invalid, attempting refresh...');
         token = await refreshAccessToken();
       }
-  
+
       const decodedToken = jwtDecode(token);
       const userId = decodedToken._id;
-  
-      const response = await fetch('http://localhost:8000/chess/game/create', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          player1_id: userId,
-          player2_id: -1,
-          time_control: TIME_CONTROLS[selectedTimeControl]
-        }),
+
+      const data = await createGame({
+        player1_id: userId,
+        player2_id: -1,
+        time_control: TIME_CONTROLS[selectedTimeControl]
       });
-  
-      if (!response.ok) {
-        const errorData = await response.json();
-        if (errorData.message === 'TOKEN EXPIRED') {
-          token = await refreshAccessToken();
-          return handleStartGame(); // Retry with new token
-        }
-        throw new Error(errorData.message || 'Failed to create game');
+
+      if (data.message === 'TOKEN EXPIRED') {
+        token = await refreshAccessToken();
+        return handleStartGame(); // Retry with new token
       }
-  
-      const data = await response.json();
+      if (!data.gameId) {
+        throw new Error(data.message || 'Failed to create game');
+      }
       navigate(`/game/${data.gameId}?type=bot&rating=${botRating}&time=${timeControl}`);
     } catch (error) {
       console.error('Error:', error);
@@ -78,7 +68,7 @@ const PlayBot = () => {
 
   return (
     <div className="min-h-screen bg-[#1a1a1a] text-white font-sans">
-      <NavBar/>
+      <NavBar />
       <div className="max-w-4xl mx-auto p-5">
         <h1 className="text-3xl font-bold mb-6 mt-11">Play a Bot</h1>
 
@@ -89,7 +79,7 @@ const PlayBot = () => {
             <Slider
               value={botRating}
               onChange={handleRatingChange}
-              min={250} 
+              min={250}
               max={2500}
               step={100}
               valueLabelDisplay="auto"
@@ -102,20 +92,19 @@ const PlayBot = () => {
         <div className="bg-[#2c2c2c] rounded-lg p-6 mb-6 shadow-lg">
           <h2 className="text-xl font-bold mb-4">Time Control</h2>
           <div className="flex space-x-4">
-          {Object.keys(TIME_CONTROLS).map((control) => (
-            <button
-              key={control}
-              onClick={() => setSelectedTimeControl(control)}
-              className={`px-4 py-2 rounded-lg transition-colors ${
-                selectedTimeControl === control
-                  ? 'bg-[#7fa650] text-white'
-                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-              }`}
-            >
-              {control}
-            </button>
-          ))}
-        </div>
+            {Object.keys(TIME_CONTROLS).map((control) => (
+              <button
+                key={control}
+                onClick={() => setSelectedTimeControl(control)}
+                className={`px-4 py-2 rounded-lg transition-colors ${selectedTimeControl === control
+                    ? 'bg-[#7fa650] text-white'
+                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  }`}
+              >
+                {control}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Start Game Button */}

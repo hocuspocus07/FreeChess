@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import NavBar from '../components/NavBar.jsx';
 import ChessBoard from '../components/ChessBoard.jsx';
 import { useParams, useLocation } from 'react-router-dom';
+import { getGameDetails,getUserDetails } from '../api.js';
 
 function GamePage() {
   const location = useLocation();
@@ -15,15 +16,14 @@ function GamePage() {
   const timeControl = isBotGame ? parseInt(queryParams.get('time')) * 60 : null;
 
   useEffect(() => {
-    fetch(`http://localhost:8000/chess/game/${gameId}`)
-      .then(response => response.json())
+    getGameDetails(gameId)
       .then(async data => {
         if (data.game) {
           setGameDetails(data.game);
           // Fetch usernames for both players
-          const [user1, user2] = await Promise.all([
-            fetch(`http://localhost:8000/chess/users/${data.game.player1_id}`).then(res => res.json()),
-            fetch(`http://localhost:8000/chess/users/${data.game.player2_id}`).then(res => res.json())
+              const [user1, user2] = await Promise.all([
+                getUserDetails(data.game.player1_id),
+                getUserDetails(data.game.player2_id)
           ]);
           setUsernames({
             player1: user1.user?.username || 'Player 1',

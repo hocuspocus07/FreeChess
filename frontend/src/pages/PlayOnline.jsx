@@ -3,12 +3,14 @@ import { Chessboard } from 'react-chessboard';
 import { Chess } from 'chess.js';
 import { io } from 'socket.io-client';
 import { useNavigate } from 'react-router-dom';
-import { refreshAccessToken } from '../api.js';
+import { API_BASE_URL, refreshAccessToken } from '../api.js';
 import MoveLog from '../components/MoveLog.jsx';
 import MaterialAdvantage from '../components/MaterialAdvantage.jsx';
 import UserInfo from '../components/UserInfo.jsx';
-import { getUserProfilePic } from '../api.js';
+import { getUserProfilePic, getUserDetails, endGame } from '../api.js';
 import Loading from '../components/Loading.jsx';
+import PostGameCard from '../components/PostGameCard.jsx';
+import { NavigationPrompt } from '../components/NavigationPrompt.jsx';
 
 const PlayOnline = () => {
   const [game, setGame] = useState(new Chess());
@@ -35,21 +37,73 @@ const PlayOnline = () => {
   const [opponentUsername, setOpponentUsername] = useState('');
   const [myProfilePic, setMyProfilePic] = useState('');
   const [opponentProfilePic, setOpponentProfilePic] = useState('');
+  const [gameResult, setGameResult] = useState(null);
+
+  const handleGameEnd = async ({ winnerId }) => {
+  if (gameEndedRef.current) return;
+  gameEndedRef.current = true;
+
+  try {
+    setStatus('ended');
+
+    // Get final game state to verify winner
+    const gameState = getGameState(game);
+    let finalWinnerId = winnerId;
+
+    if (gameState.isCheckmate) {
+      const winnerColor = gameState.turn === 'w' ? 'black' : 'white';
+      finalWinnerId = winnerColor === playerColor ? userId : opponentId;
+    } else if (gameState.isDraw) {
+      finalWinnerId = null;
+    }
+
+    if (moveHistory.length === 0) {
+      return;
+    }
+
+    setTimeout(() => {
+      setGameResult({
+        player1: { id: userId, username: myUsername, profilePic: myProfilePic },
+        player2: { id: opponentId, username: opponentUsername, profilePic: opponentProfilePic },
+        timeControl: 600,
+        result: finalWinnerId === userId ? 'Win' : finalWinnerId === opponentId ? 'Loss' : 'Draw',
+        winType: gameState.isCheckmate ? 'Checkmate' : gameState.isDraw ? 'Draw' : 'Resignation',
+        gameId,
+        winnerId: finalWinnerId,
+        currentUserId: userId,
+      });
+    }, 1000);
+
+    const data = await endGame(gameId, finalWinnerId, finalWinnerId ? 'completed' : 'draw');
+    if (data.message && data.message !== 'Game ended successfully') {
+      throw new Error(data.message || 'Failed to save game result');
+    }
+
+    const resultMessage = finalWinnerId
+      ? (finalWinnerId === userId ? 'You won!' : 'You lost!')
+      : 'Game ended in a draw!';
+
+    setTimeout(() => {
+      alert(resultMessage);
+    }, 1000);
+  } catch (error) {
+    console.error('Error ending game:', error);
+  }
+};
+
   useEffect(() => {
     const userId = localStorage.getItem('userId');
     if (userId) {
-      fetch(`http://localhost:8000/chess/users/${userId}`)
-        .then(res => res.json())
-        .then(data => setMyUsername(data.user?.username || 'You'));
+      getUserDetails(userId).then(data => setMyUsername(data.user?.username || 'You'));
+      getUserProfilePic(userId).then(pic => setMyProfilePic(pic ? `/avatar/${pic}` : "/avatar/6.png"));
     }
   }, []);
 
   // Fetch opponent username when assigned:
   useEffect(() => {
     if (opponentId) {
-      fetch(`http://localhost:8000/chess/users/${opponentId}`)
-        .then(res => res.json())
-        .then(data => setOpponentUsername(data.user?.username || 'Opponent'));
+      getUserDetails(opponentId).then(data => setOpponentUsername(data.user?.username || 'Opponent'));
+      getUserProfilePic(opponentId).then(pic => setOpponentProfilePic(pic ? `/avatar/${pic}` : "/avatar/6.png"));
     }
   }, [opponentId]);
   useEffect(() => {
@@ -63,23 +117,19 @@ const PlayOnline = () => {
   }, [socket, hasJoinedQueue]);
 
   useEffect(() => {
-    const userId = localStorage.getItem('userId');
-    if (userId) {
-      fetch(`http://localhost:8000/chess/users/${userId}`)
-        .then(res => res.json())
-        .then(data => setMyUsername(data.user?.username || 'You'));
-      getUserProfilePic(userId).then(pic => setMyProfilePic(pic ? `/avatar/${pic}` : "/avatar/6.png"));
-    }
-  }, []);
+  if (!socket) return;
 
-  useEffect(() => {
-    if (opponentId) {
-      fetch(`http://localhost:8000/chess/users/${opponentId}`)
-        .then(res => res.json())
-        .then(data => setOpponentUsername(data.user?.username || 'Opponent'));
-      getUserProfilePic(opponentId).then(pic => setOpponentProfilePic(pic ? `/avatar/${pic}` : "/avatar/6.png"));
-    }
-  }, [opponentId]);
+  socket.on('gameOver', handleGameEnd);
+  socket.on('opponentResigned', () => {
+    console.log('Opponent resigned event received');
+    handleGameEnd({ winnerId: userId });
+  });
+
+  return () => {
+    socket.off('gameOver', handleGameEnd);
+    socket.off('opponentResigned');
+  };
+}, [socket, gameId, userId, game, playerColor, opponentId, moveHistory, myUsername, opponentUsername, myProfilePic, opponentProfilePic]);
 
   useEffect(() => {
     if (status !== 'active') {
@@ -182,19 +232,6 @@ const PlayOnline = () => {
         setCurrentMoveIndex(flatMoveCount - 1);
 
         const gameState = getGameState(newGame);
-        if (gameState.isGameOver) {
-          setTimeout(() => {
-            const winnerId = gameState.isCheckmate
-              ? (gameState.turn === 'w' ? opponentId : userId)
-              : 'draw';
-            socket.emit('gameOver', {
-              gameId,
-              winnerId,
-              moveHistory: updatedMoveHistory
-            });
-            setStatus('ended');
-          }, 1000);
-        }
       } catch (error) {
         console.error('Error updating game:', error);
         socket.emit('moveHistoryError', {
@@ -210,14 +247,14 @@ const PlayOnline = () => {
     };
   }, [socket, gameId, userId, opponentId]);
 
-useEffect(() => {
-  return () => {
-    if (socket) {
-      socket.emit('leaveMatchmaking');
-      socket.disconnect();
-    }
-  };
-}, [socket]); 
+  useEffect(() => {
+    return () => {
+      if (socket) {
+        socket.emit('leaveMatchmaking');
+        socket.disconnect();
+      }
+    };
+  }, [socket]);
 
   useEffect(() => {
     const initializeConnection = async () => {
@@ -228,7 +265,7 @@ useEffect(() => {
           return;
         }
 
-        const newSocket = io('http://localhost:8000', {
+        const newSocket = io(API_BASE_URL, {
           auth: { token },
           reconnectionAttempts: 3,
         });
@@ -346,6 +383,9 @@ useEffect(() => {
 
       if (!move) return false;
 
+      const newGame = new Chess(game.fen());
+      setGame(newGame);
+
       const now = Date.now();
       const elapsedSeconds = Math.floor((now - lastMoveTime) / 1000);
 
@@ -356,11 +396,9 @@ useEffect(() => {
       }
 
       setLastMoveTime(now);
-      const newGame = new Chess(game.fen());
       const totalMoves = newGame.history().length;
       const moveNumber = Math.ceil((totalMoves) / 2);
 
-      setGame(newGame);
       setCurrentTurn(newGame.turn());
       setCurrentMoveIndex(totalMoves - 1);
 
@@ -417,91 +455,12 @@ useEffect(() => {
           black: blackTime
         }
       });
-
-      // Game over logic
-      if (gameState.isGameOver) {
-        console.log('GAME OVER DETECTED');
-        const winnerId = gameState.isCheckmate
-          ? (gameState.turn === 'w' ? opponentId : userId)
-          : 'draw';
-
-        console.log('Emitting gameOver with:', { gameId, winnerId });
-        socket.emit('gameOver', { gameId, winnerId });
-        setStatus('ended');
-      }
-
       return true;
     } catch (error) {
       console.error('Move error:', error);
       return false;
     }
   }
-
-
-  useEffect(() => {
-    if (!socket) return;
-
-    const handleGameEnd = async ({ winnerId }) => {
-      if (gameEndedRef.current) return;
-      gameEndedRef.current = true;
-
-      try {
-        setStatus('ended');
-
-        // Get final game state to verify winner
-        const gameState = getGameState(game);
-        let finalWinnerId = winnerId;
-
-        if (gameState.isCheckmate) {
-          const winnerColor = gameState.turn === 'w' ? 'black' : 'white';
-          finalWinnerId = winnerColor === playerColor ? userId : opponentId;
-        } else if (gameState.isDraw) {
-          finalWinnerId = null;
-        }
-
-        if (moveHistory.length === 0) {
-          return;
-        }
-
-        const response = await fetch(`http://localhost:8000/chess/game/${gameId}/end`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          },
-          body: JSON.stringify({
-            winnerId: finalWinnerId,
-            status: finalWinnerId ? 'completed' : 'draw'
-          })
-        });
-
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.message || 'Failed to save game result');
-
-        const resultMessage = finalWinnerId
-          ? (finalWinnerId === userId ? 'You won!' : 'You lost!')
-          : 'Game ended in a draw!';
-
-        setTimeout(() => {
-          alert(resultMessage);
-        }, 1000);
-      } catch (error) {
-        console.error('Error ending game:', error);
-      }
-    };
-
-
-    socket.on('gameEnded', handleGameEnd);
-    socket.on('opponentResigned', () => {
-      console.log('Opponent resigned event received');
-      handleGameEnd({ winnerId: userId });
-    });
-
-    return () => {
-      socket.off('gameEnded', handleGameEnd);
-      socket.off('opponentResigned');
-    };
-  }, [socket, gameId, userId]);
 
   useEffect(() => {
     console.log('Game state updated:', getGameState(game), 'Status:', status);
@@ -552,11 +511,32 @@ useEffect(() => {
         return null;
     }
   };
+  useEffect(() => {
+    if (status === 'waiting') {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [status]);
 
+  if (status === 'waiting') {
+    return (
+      <div className="min-h-screen bg-[#1a1a1a] text-white font-sans flex items-center justify-center">
+        <Loading text="Waiting" />
+      </div>
+    );
+  }
   return (
     <div className="min-h-screen bg-[#1a1a1a] text-white font-sans">
-      {status === 'waiting' && (
-        <Loading text="Waiting" />
+
+      {status === 'ended' && gameResult && (
+        <PostGameCard
+          gameResult={gameResult}
+          onClose={() => setGameResult(null)}
+        />
       )}
       <div className="max-w-4xl mx-auto p-6 bg-[#2c2c2c] rounded-lg shadow-lg">
         <header className="flex justify-between items-center mb-6">

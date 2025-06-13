@@ -3,6 +3,7 @@ import React from 'react'
 import PopUp from './PopUp.jsx';
 import UserProfile from '../pages/UserProfile.jsx';
 import { useNavigate } from 'react-router-dom';
+import { searchUsers } from '../api.js';
 
 function Search() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -15,13 +16,8 @@ function Search() {
     if (!searchQuery) return;
   
     try {
-      const response = await fetch(`http://localhost:8000/chess/users/search?query=${searchQuery}`,{method: 'GET',
-        credentials: 'include'});
-      if (!response.ok) {
-        throw new Error('Failed to fetch search results');
-      }
-      const data = await response.json();
-      setSearchResults(data.users || []); 
+      const users=await searchUsers(searchQuery);
+      setSearchResults(users); 
       setIsPopUpOpen(true); 
     } catch (error) {
       console.error('Error fetching search results:', error);

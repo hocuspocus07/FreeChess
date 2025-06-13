@@ -2,14 +2,16 @@ import { Chessboard } from 'react-chessboard';
 import { Chess } from 'chess.js';
 import React, { useRef, useState, useEffect } from 'react';
 import { BackwardIcon, ClockIcon, ForwardIcon } from '@heroicons/react/24/outline';
-import { saveMatch } from '../api.js';
+import { getMoves, saveMatch,getBotMove,endGame, addMove,resignGame,getUserDetails } from '../api.js';
 import UserInfo from './UserInfo.jsx';
 import MoveLog from './MoveLog.jsx';
 import PostGameCard from './PostGameCard.jsx';
 import MaterialAdvantage from './MaterialAdvantage.jsx';
+import { useLocation } from 'react-router-dom';
 
 const ChessBoard = ({ isBotGame, botRating, timeControl, isViewOnly, gameId, userId, socket, player1_id, player2_id, player1_username = "Player 1", player2_username = "Player 2" }) => {
   const [game, setGame] = useState(new Chess());
+const location = useLocation();
   const queryParams = new URLSearchParams(location.search);
   const isReplay = queryParams.get('replay') === 'true';
   const [isBotThinking, setIsBotThinking] = useState(false);
@@ -24,9 +26,34 @@ const ChessBoard = ({ isBotGame, botRating, timeControl, isViewOnly, gameId, use
   const [materialAdvantage, setMaterialAdvantage] = useState(0);
   const [showPostGameCard, setShowPostGameCard] = useState(false);
   const [gameResultDisplay, setGameResultDisplay] = useState(null);
+  const [player1_profilePic, setPlayer1ProfilePic] = useState(null);
+const [player2_profilePic, setPlayer2ProfilePic] = useState(null);
+
+useEffect(() => {
+  const fetchProfilePics = async () => {
+    if (player1_id) {
+      try {
+        const res1 = await getUserDetails(player1_id);
+        setPlayer1ProfilePic(res1?.user?.profilepic || "6.png");
+      } catch {
+        setPlayer1ProfilePic("6.png");
+      }
+    }
+    if (player2_id && player2_id !== -1) {
+      try {
+        const res2 = await getUserDetails(player2_id);
+        setPlayer2ProfilePic(res2?.user?.profilepic || "6.png");
+      } catch {
+        setPlayer2ProfilePic("6.png");
+      }
+    } else if (player2_id === -1) {
+      setPlayer2ProfilePic("bot.png");
+    }
+  };
+  fetchProfilePics();
+}, [player1_id, player2_id]);
 
   const [postGameResult, setPostGameResult] = useState(null);
-
   useEffect(() => {
     if (isReplay) {
       fetchGameState(gameId);
@@ -35,11 +62,7 @@ const ChessBoard = ({ isBotGame, botRating, timeControl, isViewOnly, gameId, use
 
   const fetchGameState = async (gameId) => {
     try {
-      const response = await fetch(`http://localhost:8000/chess/game/${gameId}/moves`);
-      if (!response.ok) throw new Error('Failed to fetch game state');
-
-      const moves = await response.json();
-      console.log(moves);
+      const moves = await getMoves(gameId);
       const gameCopy = new Chess();
 
       moves.forEach((move) => {
@@ -56,18 +79,10 @@ const ChessBoard = ({ isBotGame, botRating, timeControl, isViewOnly, gameId, use
     if (isBotGame && activePlayer === 'b' && !gameOver) {
       setIsBotThinking(true);
       console.log(botRating);
-
-      fetch('http://localhost:8000/chess/game/bot-move', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fen: game.fen(), botRating: botRating, gameId: gameId, playerId: player2_id }),
-      })
-        .then(response => response.json())
-        .then(data => {
-          console.log("Bot move received:", data);
-          if (!data.move) {
-            throw new Error("Invalid bot move received: " + JSON.stringify(data));
-          }
+(async () => {
+        try {
+          const data = await getBotMove({ fen: game.fen(), botRating, gameId, playerId: player2_id });
+          if (!data.move) throw new Error("Invalid bot move received: " + JSON.stringify(data));
           const botMove = data.move;
           const gameCopy = new Chess(game.fen());
           gameCopy.move(botMove);
@@ -76,9 +91,10 @@ const ChessBoard = ({ isBotGame, botRating, timeControl, isViewOnly, gameId, use
           setCurrentMoveIndex((prev) => prev + 1);
           setActivePlayer("w");
           checkGameOver(gameCopy);
-        })
-        .catch(error => console.error("Error fetching bot move:", error));
-
+        } catch (error) {
+          console.error("Error fetching bot move:", error);
+        }
+      })();
     }
   }, [activePlayer, isBotGame, gameOver, game, botRating]);
 
@@ -133,21 +149,11 @@ const ChessBoard = ({ isBotGame, botRating, timeControl, isViewOnly, gameId, use
     if (!window.confirm("Are you sure you want to resign?")) return;
 
     try {
-      const response = await fetch(`http://localhost:8000/chess/game/${gameId}/resign`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
-
-      if (!response.ok) throw new Error('Failed to resign game');
-      const data = await response.json();
-
+      await resignGame(gameId);
       setGameOver(true);
       setGameResultDisplay({
         result: "resigned",
-        winnerId: data.winnerId,
+        winnerId: userId === player1_id ? player2_id : player1_id,
         winType: "Resignation",
         gameId,
       });
@@ -190,20 +196,7 @@ const ChessBoard = ({ isBotGame, botRating, timeControl, isViewOnly, gameId, use
     setShowPostGameCard(true);
 
     try {
-      const response = await fetch(`http://localhost:8000/chess/game/${gameId}/end`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify({
-          winnerId,
-          status: 'completed',
-          result: 'timeout'
-        }),
-      });
-
-      if (!response.ok) throw new Error('Failed to update game status');
+      await endGame(gameId, winnerId, 'completed');
     } catch (error) {
       console.error('Error updating game status:', error);
     }
@@ -247,7 +240,7 @@ const ChessBoard = ({ isBotGame, botRating, timeControl, isViewOnly, gameId, use
         player1: {
           id: player1_id,
           username: player1_username,
-          profilePic: player1_profilePic || "user.png",
+          profilePic: player1_profilePic || "6.png",
           result: result.player1
         },
         player2: {
@@ -276,17 +269,7 @@ const ChessBoard = ({ isBotGame, botRating, timeControl, isViewOnly, gameId, use
           moves: moveLog
         };
         try {
-          const response = await fetch(`http://localhost:8000/chess/game/${gameId}/end`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${localStorage.getItem('token')}`,
-            },
-            body: JSON.stringify(saveData),
-          });
-
-          if (!response.ok) throw new Error('Failed to update game status');
-          console.log('Game result saved successfully');
+          await endGame(gameId, winnerId, resultStatus);
         } catch (error) {
           console.error('Error updating game status:', error);
         }
@@ -340,6 +323,7 @@ const ChessBoard = ({ isBotGame, botRating, timeControl, isViewOnly, gameId, use
       }
 
       // Update move log and current move index
+      setGame(gameCopy);
       const newMoveLog = [...moveLog, move.san];
       setMoveLog(newMoveLog);
       setCurrentMoveIndex(newMoveLog.length - 1);
@@ -356,21 +340,9 @@ const ChessBoard = ({ isBotGame, botRating, timeControl, isViewOnly, gameId, use
       console.log("🔹 Sending move data:", moveData);
 
       // Save the move to the backend
-      const response = await fetch(`http://localhost:8000/chess/game/${gameId}/moves`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-        body: JSON.stringify(moveData),
-      });
-
-      if (!response.ok) throw new Error("Failed to save move");
-
-      console.log("Move saved:", await response.json());
+      await addMove(gameId, moveData);
 
       // Update the game state
-      setGame(gameCopy);
       await checkGameOver(gameCopy);
 
       if (!gameOver) {
