@@ -23,8 +23,6 @@ COPY . .
 
 COPY ./stockfish/stockfish.exe ./stockfish/stockfish.exe
 
-RUN npm run build
-
 EXPOSE ${PORT:-8000}
 
 CMD ["node", "index.js"]
