@@ -7,11 +7,6 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Set up Wine 
-ENV WINEDEBUG=-all
-ENV DISPLAY=:0.0
-RUN wineboot --init
-
 # Create app directory
 WORKDIR /usr/src/app
 
@@ -21,7 +16,8 @@ RUN npm install
 
 COPY . .
 
-COPY ./stockfish/stockfish.exe ./stockfish/stockfish.exe
+COPY ./stockfish/stockfish ./stockfish/stockfish
+RUN chmod +x ./stockfish/stockfish
 
 EXPOSE ${PORT:-8000}
 
