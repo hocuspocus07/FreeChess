@@ -5,12 +5,12 @@ dotenv.config();
 
 console.log("Running in", process.env.NODE_ENV, "mode");
 const dbConfig = {
-  production: { // For deployed environment
-    host: process.env.DEPLOYED_HOST,
-    user: process.env.DEPLOYED_USER,
-    password: process.env.DEPLOYED_PASSWD,
-    database: process.env.DEPLOYED_DB,
-    port: process.env.DB_PORT || 5432,
+  production: { // For production
+    connectionString: process.env.DEPLOYED_URL,
+    ssl: {
+      require: true,
+      rejectUnauthorized: false 
+    }
   },
   development: { // For local development
     host: process.env.DB_HOST,
