@@ -4,7 +4,7 @@ import User from "../models/User.models.js";
 import { spawn } from "child_process";
 import { Chess} from 'chess.js'
 
-const STOCKFISH_PATH = 'wine ./stockfish/stockfish.exe';
+const STOCKFISH_PATH = './stockfish/stockfish';
 
 export const createGame = async (req, res) => {
     const { player1_id, player2_id, winner_id, status, time_control } = req.body;
