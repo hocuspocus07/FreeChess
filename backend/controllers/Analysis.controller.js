@@ -6,7 +6,7 @@ import getStockfishEval from "../helper/stockfishEval.js";
 export const analyzeGame = async (req, res) => {
   const { gameId } = req.params;
   const STOCKFISH_PATH =
-    "C:/Users/Lenovo/Desktop/coding/FreeChess/backend/stockfish/stockfish.exe";
+    "C:/Users/Lenovo/Desktop/coding/FreeChess/backend/stockfish/stockfish";
 
   try {
     const moves = await Move.findByGameId(gameId);

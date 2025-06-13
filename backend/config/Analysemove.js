@@ -1,7 +1,7 @@
 import { Chess } from 'chess.js';
 import { exec } from 'child_process';
 
-const STOCKFISH_PATH = 'C:/Users/Lenovo/Desktop/coding/FreeChess/backend/stockfish/stockfish.exe';
+const STOCKFISH_PATH = 'C:/Users/Lenovo/Desktop/coding/FreeChess/backend/stockfish/stockfish';
 
 const analyzeMove = async (fen, move) => {
   const chess = new Chess(fen);
