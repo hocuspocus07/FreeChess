@@ -212,7 +212,6 @@ export const botMove = async (req, res) => {
 
 function getBestMove(fen, depth, movetime, skill, botRating) {
   return new Promise((resolve, reject) => {
-    const stockfish = Stockfish();
     let bestMove = null;
 
     stockfish.onmessage = (event) => {
