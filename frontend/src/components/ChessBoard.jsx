@@ -177,12 +177,14 @@ useEffect(() => {
     const gameResult = {
       player1: {
         id: player1_id,
-        username: player1_id, // Replace with actual username if available
+        username: player1_username,
+        profilePic: player1_profilePic || "6.png",
         result: winnerColor === 'w' ? 'Win' : 'Loss'
       },
       player2: {
         id: player2_id,
-        username: player2_id, // Replace with actual username if available
+        username: player2_username,
+    profilePic: isBotGame ? "bot.png" : (player2_profilePic || "6.png"),
         result: winnerColor === 'b' ? 'Win' : 'Loss'
       },
       timeControl: timeControl,

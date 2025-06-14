@@ -193,15 +193,15 @@ export const botMove = async (req, res) => {
   // More granular bot configuration
   const configureBot = (botRating) => {
     if (botRating <= 800) {
-      return { skill: 0, depth: 1, movetime: 500, maxMistakes: 5 };
+      return { skill: 0, depth: 1, movetime: 100, maxMistakes: 5 };
     } else if (botRating <= 1200) {
-      return { skill: 4, depth: 3, movetime: 1000, maxMistakes: 3 };
+      return { skill: 4, depth: 3, movetime: 200, maxMistakes: 3 };
     } else if (botRating <= 1600) {
-      return { skill: 8, depth: 6, movetime: 1500, maxMistakes: 2 };
+      return { skill: 8, depth: 6, movetime: 300, maxMistakes: 2 };
     } else if (botRating <= 2000) {
-      return { skill: 15, depth: 10, movetime: 2000, maxMistakes: 1 };
+      return { skill: 15, depth: 10, movetime: 400, maxMistakes: 1 };
     } else {
-      return { skill: 20, depth: 15, movetime: 3000, maxMistakes: 0 };
+      return { skill: 20, depth: 15, movetime: 500, maxMistakes: 0 };
     }
   };
 

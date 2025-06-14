@@ -10,7 +10,6 @@ import UserInfo from '../components/UserInfo.jsx';
 import { getUserProfilePic, getUserDetails, endGame } from '../api.js';
 import Loading from '../components/Loading.jsx';
 import PostGameCard from '../components/PostGameCard.jsx';
-import { NavigationPrompt } from '../components/NavigationPrompt.jsx';
 
 const PlayOnline = () => {
   const [game, setGame] = useState(new Chess());

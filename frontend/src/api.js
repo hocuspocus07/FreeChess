@@ -1,6 +1,6 @@
 import axios from 'axios';
-export const API_BASE_URL = 'http://localhost:8000'; 
-
+export const API_BASE_URL = 'https://freechess-191i.onrender.com'; 
+axios.defaults.withCredentials = true;
 export const registerUser = async (userData) => {
   try {
     const response = await axios.post(`${API_BASE_URL}/chess/users/register`, userData);
@@ -12,7 +12,7 @@ export const registerUser = async (userData) => {
 
 export const loginUser = async (userData) => {
   try {
-    const response = await axios.post(`${API_BASE_URL}/chess/users/login`, userData);
+    const response = await axios.post(`${API_BASE_URL}/chess/users/login`, userData,{ withCredentials: true });
     if (response.data && response.data.token && response.data.user) {
       localStorage.setItem('token', response.data.token); 
       localStorage.setItem('userId', response.data.user.id);
@@ -459,7 +459,11 @@ export const endGame = async (gameId, winnerId, status) => {
 export const getBotMove = async ({ fen, botRating, gameId, playerId }) => {
   const response = await fetch(`${API_BASE_URL}/chess/game/bot-move`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${localStorage.getItem('token')}` // Add auth header if needed
+    },
+    credentials: 'include', // ← Critical for CORS with cookies
     body: JSON.stringify({ fen, botRating, gameId, playerId }),
   });
   if (!response.ok) throw new Error('Failed to get bot move');
