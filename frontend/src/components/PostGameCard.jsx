@@ -59,31 +59,35 @@ function PostGameCard({ gameResult, onClose }) {
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center">
             <img
-              src={
-    player1.profilePic
-      ? `/avatar/${player1.profilePic}`
-      : player1.avatar
-        ? `/avatar/${player1.avatar}`
-        : "/avatar/6.png"
+  src={
+    player1.id === -1
+      ? "/avatar/bot.png"
+      : player1.profilePic
+        ? `/avatar/${player1.profilePic}`
+        : player1.avatar
+          ? `/avatar/${player1.avatar}`
+          : "/avatar/6.png"
   }
-              alt={player1.username}
-              className="w-12 h-12 rounded-full mr-3"
-            />
+  alt={player1.username}
+  className="w-12 h-12 rounded-full mr-3"
+/>
               <span className="text-lg font-semibold">{displayName(player1)}</span>
           </div>
           <span className="text-xl mx-4">vs</span>
           <div className="flex items-center">
             <img
-              src={
-    player2.profilePic
-      ? `/avatar/${player2.profilePic}`
-      : player2.avatar
-        ? `/avatar/${player2.avatar}`
-        : "/avatar/6.png"
+  src={
+    player2.id === -1
+      ? "/avatar/bot.png"
+      : player2.profilePic
+        ? `/avatar/${player2.profilePic}`
+        : player2.avatar
+          ? `/avatar/${player2.avatar}`
+          : "/avatar/6.png"
   }
-              alt={player2.username}
-              className="w-12 h-12 rounded-full mr-3"
-            />
+  alt={player2.username}
+  className="w-12 h-12 rounded-full mr-3"
+/>
               <span className="text-lg font-semibold">{displayName(player2)}</span>
           </div>
         </div>

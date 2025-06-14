@@ -55,7 +55,7 @@ export default function Register() {
                                 <div className="mt-1 flex rounded-md shadow-sm">
                                     <input id="username" value={username}
                                         onChange={(e) => setUsername(e.target.value)} name="username" placeholder="john" type="text" required=""
-                                        className="flex-1  border border-gray-300 form-input pl-3 block w-full rounded-md transition duration-150 ease-in-out sm:text-sm sm:leading-5 h-10" />
+                                        className="flex-1 text-black border border-gray-300 form-input pl-3 block w-full rounded-md transition duration-150 ease-in-out sm:text-sm sm:leading-5 h-10" />
                                 </div>
                             </div>
 
@@ -67,7 +67,7 @@ export default function Register() {
                                     <input id="email" value={email}
                                         onChange={(e) => setEmail(e.target.value)} name="email" placeholder="user@example.com" type="email"
                                         required=""
-                                        className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:shadow-outline-blue focus:border-blue-300 transition duration-150 ease-in-out sm:text-sm sm:leading-5" />
+                                        className="text-black appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:shadow-outline-blue focus:border-blue-300 transition duration-150 ease-in-out sm:text-sm sm:leading-5" />
                                 </div>
                             </div>
 
@@ -78,7 +78,7 @@ export default function Register() {
                                 <div className="mt-1 rounded-md shadow-sm">
                                     <input id="password" value={password}
                                         onChange={(e) => setPassword(e.target.value)} name="password" type="password" required=""
-                                        className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:shadow-outline-blue focus:border-blue-300 transition duration-150 ease-in-out sm:text-sm sm:leading-5" />
+                                        className="text-black appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:shadow-outline-blue focus:border-blue-300 transition duration-150 ease-in-out sm:text-sm sm:leading-5" />
                                 </div>
                             </div>
 
@@ -88,7 +88,7 @@ export default function Register() {
                                 </label>
                                 <div className="mt-1 rounded-md shadow-sm">
                                     <input id="password_confirmation" name="password_confirmation" type="password" required=""
-                                        className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:shadow-outline-blue focus:border-blue-300 transition duration-150 ease-in-out sm:text-sm sm:leading-5" />
+                                        className="text-black appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:shadow-outline-blue focus:border-blue-300 transition duration-150 ease-in-out sm:text-sm sm:leading-5" />
                                 </div>
                             </div>
 
