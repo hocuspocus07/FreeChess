@@ -3,6 +3,7 @@ import NavBar from '../components/NavBar.jsx';
 import ChessBoard from '../components/ChessBoard.jsx';
 import { useParams, useLocation } from 'react-router-dom';
 import { getGameDetails,getUserDetails } from '../api.js';
+import Loading from '../components/Loading.jsx';
 
 function GamePage() {
   const location = useLocation();
@@ -48,7 +49,7 @@ function GamePage() {
           player2_username={usernames.player2}
         />
       ) : (
-        <p>Loading game details...</p>
+        <Loading text="Loading"/>
       )}
     </>
   );
