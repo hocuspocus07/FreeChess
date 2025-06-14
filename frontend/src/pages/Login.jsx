@@ -11,17 +11,22 @@ export default function Login() {
 
   const handleLogin = async (e) => {
     e.preventDefault();
+    setError('');
+    if (!username || !password) {
+      setError('Please enter both username and password.');
+      return;
+    }
     try {
       const response = await loginUser({ username, password });
       console.log(response);
-      const { token, user } = response; 
+      const { token, user } = response;
       console.log(response);
-console.log(token);
+      console.log(token);
       localStorage.setItem('token', token);
       localStorage.setItem('userId', user.id);
       navigate('/user-info');
     } catch (err) {
-      setError(err.message || 'Invalid login credentials');
+      setError('Invalid login credentials');
     }
   };
 
@@ -51,6 +56,11 @@ console.log(token);
 
         <div className="sm:mx-auto sm:w-full sm:max-w-md">
           <div className="bg-transparent py-8 px-4 shadow sm:rounded-lg sm:px-10">
+            {error && (
+              <div className="mb-4 text-center text-red-500 font-bold">
+                {error}
+              </div>
+            )}
             <form onSubmit={handleLogin}>
               <div className="mt-6">
                 <label
@@ -65,7 +75,7 @@ console.log(token);
                     name="username"
                     placeholder="Your username"
                     value={username}
-        onChange={(e) => setUsername(e.target.value)}
+                    onChange={(e) => setUsername(e.target.value)}
                     type="text"
                     required
                     className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:shadow-outline-blue focus:border-blue-300 transition duration-150 ease-in-out sm:text-sm sm:leading-5"
@@ -85,7 +95,7 @@ console.log(token);
                     id="password"
                     name="password"
                     value={password}
-          onChange={(e) => setPassword(e.target.value)}
+                    onChange={(e) => setPassword(e.target.value)}
                     type="password"
                     required
                     className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:shadow-outline-blue focus:border-blue-300 transition duration-150 ease-in-out sm:text-sm sm:leading-5"
