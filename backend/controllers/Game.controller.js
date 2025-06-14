@@ -180,59 +180,97 @@ export const endGame = async (req, res) => {
 };
 
 export const botMove = async (req, res) => {
-  const { fen, botRating, gameId, playerId, remainingTime } = req.body;
+  const { fen, botRating, gameId, playerId,remainingTime } = req.body;
+  
+  // Validate input
   if (!gameId || !playerId) {
     return res.status(400).json({ error: "Missing gameId or playerId." });
   }
 
-  // Configure bot strength
+  const stockfish = spawn(`${STOCKFISH_PATH}`);
+  let buffer = '';
+
+  // More granular bot configuration
   const configureBot = (botRating) => {
     if (botRating <= 800) {
-      return { skill: 0, depth: 1, movetime: 200 };
+      return { skill: 0, depth: 1, movetime: 500, maxMistakes: 5 };
     } else if (botRating <= 1200) {
-      return { skill: 4, depth: 3, movetime: 300 };
+      return { skill: 4, depth: 3, movetime: 1000, maxMistakes: 3 };
     } else if (botRating <= 1600) {
-      return { skill: 8, depth: 5, movetime: 400 };
+      return { skill: 8, depth: 6, movetime: 1500, maxMistakes: 2 };
     } else if (botRating <= 2000) {
-      return { skill: 15, depth: 8, movetime: 600 };
+      return { skill: 15, depth: 10, movetime: 2000, maxMistakes: 1 };
     } else {
-      return { skill: 20, depth: 12, movetime: 900 };
+      return { skill: 20, depth: 15, movetime: 3000, maxMistakes: 0 };
     }
   };
-  const { skill, depth, movetime } = configureBot(botRating);
 
-  try {
-    const move = await getBestMove(fen, depth, movetime, skill, botRating);
-    await saveBotMove(gameId, playerId, move, remainingTime);
-    res.json({ move });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+  const { skill, depth, movetime, maxMistakes } = configureBot(botRating);
+
+  // Configure Stockfish
+  stockfish.stdin.write('uci\n');
+  stockfish.stdin.write('setoption name Skill Level value ' + skill + '\n');
+  stockfish.stdin.write('setoption name UCI_LimitStrength value true\n');
+  stockfish.stdin.write(`setoption name UCI_Elo value ${botRating}\n`);
+  
+  // Introduce random mistakes for weaker play
+  if (maxMistakes > 0) {
+    stockfish.stdin.write('setoption name Skill Level Maximum Error value ' + (maxMistakes * 100) + '\n');
   }
-};
+  
+  stockfish.stdin.write(`position fen ${fen}\n`);
+  
+  // Use either depth OR movetime, not both
+  if (botRating < 1600) {
+    stockfish.stdin.write(`go depth ${depth}\n`);
+  } else {
+    stockfish.stdin.write(`go movetime ${movetime}\n`);
+  }
 
-function getBestMove(fen, depth, movetime, skill, botRating) {
-  return new Promise((resolve, reject) => {
-    let bestMove = null;
-
-    stockfish.onmessage = (event) => {
-      const line = event.data || event;
-      if (line.startsWith("bestmove")) {
-        bestMove = line.split(" ")[1];
-        resolve(bestMove);
-        stockfish.terminate && stockfish.terminate();
+  stockfish.stdout.on('data', (data) => {
+    buffer += data.toString();
+    const lines = buffer.split('\n');
+    buffer = lines.pop();
+    
+    for (const line of lines) {
+      if (line.startsWith('bestmove')) {
+        let bestMove = line.split(' ')[1];
+        stockfish.kill();
+        
+        if (bestMove && bestMove !== '(none)') {
+          // Occasionally make a bad move for weaker bots
+          if (maxMistakes > 0 && Math.random() < 0.2) {
+            // Get all legal moves
+            const chess = new Chess(fen);
+            const legalMoves = chess.moves({verbose: true});
+            
+            // Filter out the best move and pick a random one
+            const otherMoves = legalMoves.filter(m => m.san !== bestMove);
+            if (otherMoves.length > 0) {
+              let randomMove = otherMoves[Math.floor(Math.random() * otherMoves.length)].san;
+              console.log(`Bot ${botRating} making intentional mistake: ${randomMove} instead of ${bestMove}`);
+              bestMove = randomMove;
+            }
+          }
+          
+          saveBotMove(gameId, playerId, bestMove,remainingTime)
+            .then(() => res.json({ move: bestMove }))
+            .catch(error => {
+              console.error('Save error:', error);
+              res.status(500).json({ error: 'Failed to save move' });
+            });
+          return;
+        }
       }
-    };
-
-    stockfish.postMessage("uci");
-    stockfish.postMessage("ucinewgame");
-    stockfish.postMessage(`setoption name Skill Level value ${skill}`);
-    stockfish.postMessage("setoption name UCI_LimitStrength value true");
-    stockfish.postMessage(`setoption name UCI_Elo value ${botRating}`);
-    stockfish.postMessage(`position fen ${fen}`);
-    stockfish.postMessage(`go depth ${depth} movetime ${movetime}`);
+    }
   });
-}
 
+  stockfish.on('close', () => console.log('Stockfish process closed'));
+  stockfish.stderr.on('data', (data) => {
+    console.error('Stockfish error:', data.toString());
+    res.status(500).json({ error: 'Stockfish error' });
+  });
+};
 
 export const saveBotGame=async(req,res)=>{
   const { player1_id, player2_id, winner_id, status, moves } = req.body;
