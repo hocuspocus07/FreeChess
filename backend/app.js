@@ -18,7 +18,7 @@ dotenv.config();
 
 const app = express();
 const corsOptions = {
-  origin: "http://localhost:5173",
+  origin: ["http://localhost:5173","https://freechessfc.netlify.app"],
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
   allowedHeaders: ["Content-Type", "Authorization"],
@@ -30,7 +30,7 @@ app.options("*", cors(corsOptions));
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:5173",
+    origin: ["http://localhost:5173","https://freechessfc.netlify.app"],
     methods: ["GET", "POST"],
   },
 });
