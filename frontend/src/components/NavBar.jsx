@@ -110,27 +110,34 @@ export default function NavBar({ avatarUpdateSignal }) {
             </div>
             <div className="hidden sm:ml-6 sm:block">
               <div className="flex space-x-4">
-                {navigation.map((item) => {
-                  if (isLoggedIn && (item.name === 'Register' || item.name === 'Login')) {
-                    return null;
-                  } else if (!isLoggedIn && item.name === 'Play A Bot') {
-                    return null;
-                  }
-                  return (
-                    <a
-                      key={item.name}
-                      href={item.href}
-                      aria-current={item.current ? 'page' : undefined}
-                      className={classNames(
-                        item.current ? 'bg-gray-900 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white',
-                        'rounded-md px-3 py-2 text-sm font-medium',
-                      )}
-                    >
-                      {item.name}
-                    </a>
-                  );
-                })}
-              </div>
+  {navigation
+    .filter(item => {
+      if (item.name === 'Multiplayer' && !isLoggedIn) return false;
+      if (isLoggedIn && (item.name === 'Register' || item.name === 'Login')) return false;
+      if (!isLoggedIn && item.name === 'Play A Bot') return false;
+      return true;
+    })
+    .sort((a, b) => {
+      if (isLoggedIn) {
+        if (a.name === 'Play A Bot' && b.name === 'Multiplayer') return -1;
+        if (a.name === 'Multiplayer' && b.name === 'Play A Bot') return 1;
+      }
+      return 0;
+    })
+    .map((item) => (
+      <a
+        key={item.name}
+        href={item.href}
+        aria-current={item.current ? 'page' : undefined}
+        className={classNames(
+          item.current ? 'bg-gray-900 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white',
+          'rounded-md px-3 py-2 text-sm font-medium',
+        )}
+      >
+        {item.name}
+      </a>
+    ))}
+</div>
             </div>
           </div>
           {isLoggedIn && (
@@ -206,27 +213,34 @@ export default function NavBar({ avatarUpdateSignal }) {
 
       <DisclosurePanel className="sm:hidden">
         <div className="space-y-1 px-2 pt-2 pb-3">
-          {navigation.map((item) => {
-            if (isLoggedIn && (item.name === 'Register' || item.name === 'Login')) {
-              return null;
-            } else if (!isLoggedIn && item.name === 'Play A Bot') {
-              return null;
-            }
-            return (
-              <DisclosureButton
-                key={item.name}
-                as="a"
-                href={item.href}
-                aria-current={item.current ? 'page' : undefined}
-                className={classNames(
-                  item.current ? 'bg-gray-900 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white',
-                  'block rounded-md px-3 py-2 text-base font-medium',
-                )}
-              >
-                {item.name}
-              </DisclosureButton>
-            );
-          })}
+          {navigation
+  .filter(item => {
+    if (item.name === 'Multiplayer' && !isLoggedIn) return false;
+    if (isLoggedIn && (item.name === 'Register' || item.name === 'Login')) return false;
+    if (!isLoggedIn && item.name === 'Play A Bot') return false;
+    return true;
+  })
+  .sort((a, b) => {
+    if (isLoggedIn) {
+      if (a.name === 'Play A Bot' && b.name === 'Multiplayer') return -1;
+      if (a.name === 'Multiplayer' && b.name === 'Play A Bot') return 1;
+    }
+    return 0;
+  })
+  .map((item) => (
+    <DisclosureButton
+      key={item.name}
+      as="a"
+      href={item.href}
+      aria-current={item.current ? 'page' : undefined}
+      className={classNames(
+        item.current ? 'bg-gray-900 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white',
+        'block rounded-md px-3 py-2 text-base font-medium',
+      )}
+    >
+      {item.name}
+    </DisclosureButton>
+  ))}
           {isLoggedIn && <Search />}
         </div>
       </DisclosurePanel>
