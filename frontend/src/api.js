@@ -1,5 +1,10 @@
 import axios from 'axios';
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
+const NODE_ENV = import.meta.env.VITE_NODE_ENV;
+export const API_BASE_URL =
+  NODE_ENV === "production"
+    ? import.meta.env.VITE_API_BASE_URL_PROD
+    : import.meta.env.VITE_API_BASE_URL_DEV;
+    
 axios.defaults.withCredentials = true;
 export const registerUser = async (userData) => {
   try {
