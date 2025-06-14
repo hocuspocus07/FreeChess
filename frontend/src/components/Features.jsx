@@ -19,6 +19,24 @@ const features = [
             'Access free game reviews as much as you want!',
         icon: <img src='brilliant.png' alt='review' className='h-10 w-10' />,
     },
+    {
+        name: 'Chat with Friends Only',
+        description:
+            'Enjoy a safe and private chatting experience. Chat is enabled only between friends, so your conversations stay meaningful and secure.',
+        icon: <img src='book.png' alt='chat' className='h-10 w-10' />,
+    },
+    {
+        name: 'Search & Add Friends',
+        description:
+            'Easily search for usernames and send friend requests. Build your chess network and challenge your friends anytime.',
+        icon: <img src='excellent.png' alt='add friend' className='h-10 w-10' />,
+    },
+    {
+        name: 'Play with Bots',
+        description:
+            'Practice and improve your skills by playing against computer bots of varying difficulty levels.',
+        icon: <img src='good.png' alt='bot' className='h-10 w-10' />,
+    },
 ];
 
 export default function Features() {
