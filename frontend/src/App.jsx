@@ -12,6 +12,7 @@ import PlayBot from './pages/PlayBot.jsx';
 import ReplayGame from './components/ReplayGame.jsx';
 import PlayOnline from './pages/PlayOnline.jsx';
 import MultiPlayer from './pages/MultiPlayer.jsx';
+import ChatComponent from './components/ChatComponent.jsx';
 
 function App() {
 
@@ -31,6 +32,7 @@ function App() {
         <Route path="/replay/:gameId" element={<ReplayGame />} />
         <Route path='/play-online' element={<PlayOnline/>}/>
         <Route path='/multiplayer' element={<MultiPlayer/>}/>
+        <Route path='/inbox' element={<ChatComponent userId={localStorage.getItem('userId')}/>}/>
       </Routes>
     </Router>
   )

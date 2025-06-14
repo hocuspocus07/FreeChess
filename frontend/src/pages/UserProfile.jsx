@@ -10,6 +10,8 @@ import { getGameDetails, getMoves, getUserDetails,getAllGamesByUser } from '../a
 import { Chess } from 'chess.js'; 
 import ProfilePicMenu from '../components/ProfilePicMenu.jsx';
 import Loading from '../components/Loading.jsx';
+import { IonIcon } from '@ionic/react';
+import { chatboxEllipsesOutline } from 'ionicons/icons';
 const UserProfile = () => {
   const { userId } = useParams(); // Get userId from the URL
   const [user, setUser] = useState(null);
@@ -236,18 +238,30 @@ const [showPostGameCard, setShowPostGameCard] = useState(false);
       )}
       <div className="max-w-4xl mx-auto mt-11">
         <div className="bg-[#2c2c2c] rounded-lg p-6 mb-6 shadow-lg">
-          <div className="flex justify-center items-center mb-2">
-            <div className='h-auto w-auto mr-2 sm:mr-4'>
-            <ProfilePicMenu
-              profilePic={user.profilepic}
-              onView={() => setShowPicModal(true)}
-              onChange={() => setShowAvatarSelector(true)}
-              isOwnProfile={false}
-            /></div>
-            <div>
-          <h1 className="text-3xl font-extrabold mb-2 text-lime-500">{user.username}</h1>
-          <p className="text-gray-400">Joined on {new Date(user.created_at).toLocaleDateString()}</p></div>
-          </div>
+          <div className="flex items-center justify-between mb-2 w-full">
+  <div className="flex flex-1 justify-center items-center">
+    <div className='h-auto w-auto mr-2 sm:mr-4'>
+      <ProfilePicMenu
+        profilePic={user.profilepic}
+        onView={() => setShowPicModal(true)}
+        onChange={() => setShowAvatarSelector(true)}
+        isOwnProfile={false}
+      />
+    </div>
+    <div>
+      <h1 className="text-3xl font-extrabold mb-2 text-lime-500">{user.username}</h1>
+      <p className="text-gray-400">Joined on {new Date(user.created_at).toLocaleDateString()}</p>
+    </div>
+  </div>
+  {userId !== signedInUserId && friendshipStatus === "accepted" && (
+    <div className='rounded-full h-20 w-20 flex items-center justify-center bg-black cursor-pointer'
+    onClick={()=>navigate(`/inbox?user=${userId}`)}
+    title='Chat with them!'
+    >
+      <IonIcon icon={chatboxEllipsesOutline} className="text-white h-12 w-12"/>
+    </div>
+  )}
+</div>
           {showPicModal && (
           <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50" onClick={() => setShowPicModal(false)}>
             <img src={`/avatar/${user.profilepic}`} alt="Profile" className="w-48 h-48 rounded-full border-4 border-lime-400 bg-white" />

@@ -1,5 +1,5 @@
 import axios from 'axios';
-export const API_BASE_URL = 'https://freechess-191i.onrender.com'; 
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
 axios.defaults.withCredentials = true;
 export const registerUser = async (userData) => {
   try {
@@ -467,5 +467,38 @@ export const getBotMove = async ({ fen, botRating, gameId, playerId }) => {
     body: JSON.stringify({ fen, botRating, gameId, playerId }),
   });
   if (!response.ok) throw new Error('Failed to get bot move');
+  return response.json();
+};
+
+export const getInboxMessages = async (userId) => {
+  const response = await fetch(`${API_BASE_URL}/chess/messages/inbox/${userId}`, {
+    headers: {
+      'Authorization': `Bearer ${localStorage.getItem('token')}`
+    }
+  });
+  if (!response.ok) throw new Error('Failed to fetch inbox');
+  return response.json();
+};
+
+export const getConversation = async (userId, otherUserId) => {
+  const response = await fetch(`${API_BASE_URL}/chess/messages/conversation/${userId}/${otherUserId}`, {
+    headers: {
+      'Authorization': `Bearer ${localStorage.getItem('token')}`
+    }
+  });
+  if (!response.ok) throw new Error('Failed to fetch conversation');
+  return response.json();
+};
+
+export const sendMessage = async (from_user, to_user, text) => {
+  const response = await fetch(`${API_BASE_URL}/chess/messages/send`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${localStorage.getItem('token')}`
+    },
+    body: JSON.stringify({ from_user, to_user, text })
+  });
+  if (!response.ok) throw new Error('Failed to send message');
   return response.json();
 };

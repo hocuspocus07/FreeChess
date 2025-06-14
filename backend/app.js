@@ -12,6 +12,7 @@ import dotenv from "dotenv";
 import jwt from "jsonwebtoken";
 import { Chess } from "chess.js";
 import { deleteAbandonedGames } from "./controllers/Game.controller.js";
+import messageRouter from "./routes/message.routes.js";
 
 dotenv.config();
 
@@ -312,5 +313,6 @@ app.use("/chess/game", gameRouter);
 app.use("/chess/users", userRouter);
 app.use("/chess/moves", moveRouter);
 app.use("/chess/analyze", analyzeRouter);
+app.use("/chess/messages",messageRouter);
 
 export { app, server };
