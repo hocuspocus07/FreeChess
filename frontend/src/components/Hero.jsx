@@ -2,6 +2,8 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 
 function Hero() {
+
+  const isLoggedIn = !!localStorage.getItem('token');
   return (
     <div className="min-h-screen flex w-screen items-center justify-center hero-bg text-white">
       <div className="container mx-auto px-4 py-20 text-center">
@@ -15,8 +17,7 @@ function Hero() {
           Join <span className="font-semibold text-blue-500">FreeChess</span>, or chess on steroids. Get free, detailed reviews for every game you play and level up your skills like never before!
         </p>
         <div className="space-x-4">
-          <Link
-            to="/register"
+          <Link to={isLoggedIn ? "/multiplayer" : "/login"}
             className="bg-blue-600 text-white px-8 py-3 rounded-lg text-lg hover:bg-blue-700 transition duration-300 transform hover:scale-105"
           >
             Get Started
