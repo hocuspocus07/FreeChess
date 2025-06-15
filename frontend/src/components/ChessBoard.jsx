@@ -403,7 +403,7 @@ useEffect(() => {
     });
   }
   return (
-    <div className="flex justify-center items-center min-h-screen w-screen bg-[#2c2c2c] p-4">
+    <div className="flex justify-center items-center min-h-screen w-full overflow-x-hidden bg-[#2c2c2c] p-4">
       {showPostGameCard && gameResultDisplay && (
         <PostGameCard
           gameResult={gameResultDisplay}
@@ -435,7 +435,7 @@ useEffect(() => {
               isMobile={true}
             />
           </div>
-          <div className="sm:h-96 sm:w-96 lg:w-96 lg:h-96 md:w-96 md:h-96 h-auto w-screen">
+          <div className="sm:h-96 sm:w-96 lg:w-96 lg:h-96 md:w-96 md:h-96 h-auto w-full">
             <Chessboard
               position={game.fen()}
               onPieceDrop={onDrop}

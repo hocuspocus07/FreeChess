@@ -13,7 +13,6 @@ const PlayBot = () => {
   };
   const [selectedTimeControl, setSelectedTimeControl] = useState('3min');
   const [botRating, setBotRating] = useState(1500);
-  const [timeControl, setTimeControl] = useState(3);
   const navigate = useNavigate();
 
   // Handle bot rating change
@@ -54,7 +53,7 @@ const PlayBot = () => {
       if (!data.gameId) {
         throw new Error(data.message || 'Failed to create game');
       }
-      navigate(`/game/${data.gameId}?type=bot&rating=${botRating}&time=${timeControl}`);
+      navigate(`/game/${data.gameId}?type=bot&rating=${botRating}&time=${botRating}&time=${TIME_CONTROLS[selectedTimeControl]}`);
     } catch (error) {
       console.error('Error:', error);
       if (error.message.includes('401') || error.message.includes('TOKEN')) {
