@@ -14,8 +14,7 @@ function GamePage() {
   const [usernames, setUsernames] = useState({ player1: '', player2: '' });
   const isBotGame = queryParams.get('type') === 'bot';
   const botRating = isBotGame ? parseInt(queryParams.get('rating')) : null;
-  const timeControl = isBotGame ? parseInt(queryParams.get('time')) * 60 : null;
-
+  const timeControl = isBotGame ? parseInt(queryParams.get('time')) : null;
   useEffect(() => {
     getGameDetails(gameId)
       .then(async data => {
