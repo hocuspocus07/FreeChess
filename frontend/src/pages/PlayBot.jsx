@@ -53,7 +53,7 @@ const PlayBot = () => {
       if (!data.gameId) {
         throw new Error(data.message || 'Failed to create game');
       }
-      navigate(`/game/${data.gameId}?type=bot&rating=${botRating}&time=${botRating}&time=${TIME_CONTROLS[selectedTimeControl]}`);
+      navigate(`/game/${data.gameId}?type=bot&rating=${botRating}&time=${TIME_CONTROLS[selectedTimeControl]}`);
     } catch (error) {
       console.error('Error:', error);
       if (error.message.includes('401') || error.message.includes('TOKEN')) {
