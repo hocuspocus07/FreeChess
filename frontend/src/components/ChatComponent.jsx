@@ -144,15 +144,15 @@ const ChatComponent = ({ userId }) => {
           setProfilePics(profilePicMap);
         })
         .catch(() => setInbox([]));
-        //too lazy for socket pt.2
-          interval = setInterval(() => {
-            getInboxMessages(userId)
-              .then(async data => {
-                setInbox(data.messages || []);
-                // ...fetch usernames/profilePics if needed...
-              })
-              .catch(() => setInbox([]));
-          }, 2000);
+      //too lazy for socket pt.2
+      interval = setInterval(() => {
+        getInboxMessages(userId)
+          .then(async data => {
+            setInbox(data.messages || []);
+            // ...fetch usernames/profilePics if needed...
+          })
+          .catch(() => setInbox([]));
+      }, 2000);
     }
     return () => clearInterval(interval);
   }, [userId]);
@@ -193,6 +193,27 @@ const ChatComponent = ({ userId }) => {
     return usernames[id] || id;
   };
 
+  function getDateLabel(dateString) {
+    const date = new Date(dateString);
+    const today = new Date();
+    const yesterday = new Date();
+    yesterday.setDate(today.getDate() - 1);
+
+    const isToday =
+      date.getDate() === today.getDate() &&
+      date.getMonth() === today.getMonth() &&
+      date.getFullYear() === today.getFullYear();
+
+    const isYesterday =
+      date.getDate() === yesterday.getDate() &&
+      date.getMonth() === yesterday.getMonth() &&
+      date.getFullYear() === yesterday.getFullYear();
+
+    if (isToday) return "Today";
+    if (isYesterday) return "Yesterday";
+    return date.toLocaleDateString();
+  }
+  let lastDate = null;
   // Inbox list
   const InboxList = (
     <div className="w-screen sm:w-1/4 h-screen border-r overflow-y-auto scrollbar-custom bg-[#1a1a1a]">
@@ -273,30 +294,48 @@ const ChatComponent = ({ userId }) => {
                   const myAvatar = profilePics[userId]
                     ? `/avatar/${profilePics[userId]}`
                     : "/avatar/6.png";
+                  const msgDate = new Date(msg.timestamp);
+                  const dateLabel = getDateLabel(msg.timestamp);
+                  const showDate =
+                    !lastDate ||
+                    new Date(lastDate).toDateString() !== msgDate.toDateString();
+                  lastDate = msg.timestamp;
                   return (
-                    <div
-                      key={i}
-                      className={`message mb-2 flex ${isMe ? 'justify-end' : 'justify-start'} items-end`}
-                    >
-                      {!isMe && (
-                        <div className="h-10 w-10 rounded-full overflow-hidden mr-2">
-                          <img src={avatar} alt="User Avatar" className="h-full w-full object-cover" />
+                    <React.Fragment key={i}>
+                      {showDate && (
+                        <div className="flex justify-center my-4">
+                          <span className="bg-gray-700 text-white px-4 py-1 rounded-full text-xs font-semibold shadow">
+                            {dateLabel}
+                          </span>
                         </div>
                       )}
                       <div
-                        className={`rounded-lg px-3 py-2 max-w-xs break-words ${isMe
-                          ? 'bg-lime-600 text-white self-end'
-                          : 'bg-blue-600 text-white self-start'
-                          }`}
+                        key={i}
+                        className={`message mb-2 flex ${isMe ? 'justify-end' : 'justify-start'} items-end`}
                       >
-                        <span className="ml-2">{msg.text}</span>
-                      </div>
-                      {isMe && (
-                        <div className="h-10 w-10 rounded-full overflow-hidden ml-2">
-                          <img src={myAvatar} alt="User Avatar" className="h-full w-full object-cover" />
+                        {!isMe && (
+                          <div className="h-10 w-10 rounded-full overflow-hidden mr-2">
+                            <img src={avatar} alt="User Avatar" className="h-full w-full object-cover" />
+                          </div>
+                        )}
+                        <div
+                          className={`rounded-lg px-3 py-2 max-w-xs break-words ${isMe
+                            ? 'bg-lime-600 text-white self-end'
+                            : 'bg-blue-600 text-white self-start'
+                            }`}
+                        >
+                          <span className="ml-2">{msg.text}</span>
+                          <div className="text-xs text-gray-200 mt-1 text-right">
+                            {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </div>
                         </div>
-                      )}
-                    </div>
+                        {isMe && (
+                          <div className="h-10 w-10 rounded-full overflow-hidden ml-2">
+                            <img src={myAvatar} alt="User Avatar" className="h-full w-full object-cover" />
+                          </div>
+                        )}
+                      </div>
+                    </React.Fragment>
                   );
                 })}
                 <div ref={messageEndRef} />
