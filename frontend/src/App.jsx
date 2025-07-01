@@ -13,6 +13,7 @@ import ReplayGame from './components/ReplayGame.jsx';
 import PlayOnline from './pages/PlayOnline.jsx';
 import MultiPlayer from './pages/MultiPlayer.jsx';
 import ChatComponent from './components/ChatComponent.jsx';
+import AuthWrapper from './components/AuthWrapper.jsx';
 
 function App() {
 
@@ -22,17 +23,17 @@ function App() {
         <Route path="/" element={<Landing />} />
         <Route path="/register" element={<Register/>} />
         <Route path="/login" element={<Login/>} />
-        <Route path='/user-info' element={<UserDashboard/>}/>
+        <Route path='/user-info' element={<AuthWrapper><UserDashboard/></AuthWrapper>}/>
         <Route path='/how-to' element={<HowToPlay/>}/>
-        <Route path='/game' element={<GamePage/>}/>
-        <Route path="/user/:userId" element={<UserProfile />} />
-        <Route path="/game/:gameId" element={<GamePage />} />
-        <Route path="/play-bot" element={<PlayBot />} />
-        <Route path="/game/bot" element={<GamePage />} />
-        <Route path="/replay/:gameId" element={<ReplayGame />} />
-        <Route path='/play-online' element={<PlayOnline/>}/>
-        <Route path='/multiplayer' element={<MultiPlayer/>}/>
-        <Route path='/inbox' element={<ChatComponent userId={localStorage.getItem('userId')}/>}/>
+        <Route path='/game' element={<AuthWrapper><GamePage/></AuthWrapper>}/>
+        <Route path="/user/:userId" element={<AuthWrapper><UserProfile /></AuthWrapper>} />
+        <Route path="/game/:gameId" element={<AuthWrapper><GamePage /></AuthWrapper>} />
+        <Route path="/play-bot" element={<AuthWrapper><PlayBot /></AuthWrapper>} />
+        <Route path="/game/bot" element={<AuthWrapper><GamePage /></AuthWrapper>} />
+        <Route path="/replay/:gameId" element={<AuthWrapper><ReplayGame /></AuthWrapper>} />
+        <Route path='/play-online' element={<AuthWrapper><PlayOnline/></AuthWrapper>}/>
+        <Route path='/multiplayer' element={<AuthWrapper><MultiPlayer/></AuthWrapper>}/>
+        <Route path='/inbox' element={<AuthWrapper><ChatComponent userId={localStorage.getItem('userId')}/></AuthWrapper>}/>
       </Routes>
     </Router>
   )

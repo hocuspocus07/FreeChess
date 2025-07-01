@@ -1,16 +1,80 @@
+import React, { useState, useEffect } from 'react';
 import NavBar from "../components/NavBar";
 import { useNavigate } from "react-router-dom";
-import { registerUser } from "../api.js";
-import { useState } from "react";
+import { registerUser, searchUsers } from "../api.js";
+import { IonIcon } from '@ionic/react';
+import { checkmarkOutline, closeOutline } from 'ionicons/icons';
+
 export default function Register() {
     const [username, setUsername] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
+    const [usernameError, setUsernameError] = useState('');
+    const [usernameAvailable, setUsernameAvailable] = useState(null);
+    const [showError, setShowError] = useState(false);
     const navigate = useNavigate();
+    useEffect(() => {
+        const checkUsername = async () => {
+            if (username.length >= 3 && !usernameError) {
+                try {
+                    const response = await searchUsers(username);
+                    const isTaken = response.some(user => user.username.toLowerCase() === username.toLowerCase());
+                    setUsernameAvailable(!isTaken);
+                } catch (err) {
+                    setUsernameAvailable(null);
+                }
+            } else {
+                setUsernameAvailable(null);
+            }
+        };
+
+        const timer = setTimeout(() => {
+            checkUsername();
+        }, 500);
+
+        return () => clearTimeout(timer);
+    }, [username, usernameError]);
+    useEffect(() => {
+        if (error) {
+            setShowError(true);
+            const timer = setTimeout(() => {
+                setShowError(false);
+                setError('');
+            }, 2000);
+            return () => clearTimeout(timer);
+        }
+    }, [error]);
+    const handleUsernameChange = (e) => {
+        const value = e.target.value.toLowerCase();
+        setUsername(value);
+
+        setUsernameAvailable(null);
+
+        if (/\s/.test(value)) {
+            setUsernameError('Spaces are not allowed');
+        } else if (/[A-Z]/.test(value)) {
+            setUsernameError('Use lowercase only');
+        } else if (value.length < 3 && value.length > 0) {
+            setUsernameError('At least 3 characters');
+        } else if (value.length > 20) {
+            setUsernameError('Max 20 characters');
+        } else {
+            setUsernameError('');
+        }
+    };
+
     const handleRegister = async (e) => {
         e.preventDefault();
         try {
+            if (usernameError) {
+                setError(usernameError);
+                return;
+            }
+            if (usernameAvailable === false) {
+                setError('Username already taken');
+                return;
+            }
             const response = await registerUser({ username, email, password });
             console.log(response.data);
             navigate('/login');
@@ -18,6 +82,7 @@ export default function Register() {
             setError(err.response?.data?.message || 'Something went wrong');
         }
     };
+
     return (
         <div className="hero-bg w-screen h-screen overflow-hidden">
             <NavBar />
@@ -48,15 +113,50 @@ export default function Register() {
                             </div>
                         )}
                         <form onSubmit={handleRegister}>
-
-
                             <div className="mt-6">
                                 <label htmlFor="username" className="block text-sm font-medium leading-5 text-white">Username</label>
-                                <div className="mt-1 flex rounded-md shadow-sm">
-                                    <input id="username" value={username}
-                                        onChange={(e) => setUsername(e.target.value)} name="username" placeholder="john" type="text" required=""
-                                        className="flex-1 text-black border border-gray-300 form-input pl-3 block w-full rounded-md transition duration-150 ease-in-out sm:text-sm sm:leading-5 h-10" />
+                                <div className="mt-1 relative rounded-md shadow-sm">
+                                    <input
+                                        id="username"
+                                        value={username}
+                                        onChange={handleUsernameChange}
+                                        onKeyDown={(e) => {
+                                            if (e.key === ' ') {
+                                                e.preventDefault();
+                                                setUsernameError('Spaces are not allowed');
+                                            }
+                                        }}
+                                        name="username"
+                                        placeholder="e.g. coolplayer123"
+                                        type="text"
+                                        required
+                                        className="flex-1 text-black border border-gray-300 form-input pl-3 block w-full rounded-md transition duration-150 ease-in-out sm:text-sm sm:leading-5 h-10 pr-10"
+                                    />
+                                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                        {usernameError ? (
+                                            <IonIcon icon={closeOutline} className="h-5 w-5 text-red-500" />
+                                        ) : username && !usernameError && usernameAvailable === true ? (
+                                            <IonIcon icon={checkmarkOutline} className="h-5 w-5 text-green-500" />
+                                        ) : username && !usernameError && usernameAvailable === false ? (
+                                            <IonIcon icon={closeOutline} className="h-5 w-5 text-red-500" />
+                                        ) : null}
+                                    </div>
                                 </div>
+                                <div className={`transition-opacity duration-300 ${showError ? 'opacity-100' : 'opacity-0'}`}>
+                                    {error && (
+                                        <p className="mt-1 text-sm text-red-500">{error}</p>
+                                    )}
+                                </div>
+                                {username && !usernameError && usernameAvailable === false && (
+                                    <p className="mt-1 text-sm text-red-500">Username already taken</p>
+                                )}
+                                {!usernameError && (
+                                    <p className="mt-1 text-sm text-gray-400">
+                                        {usernameAvailable === true ?
+                                            'Username available!' :
+                                            '3-20 lowercase letters, no spaces'}
+                                    </p>
+                                )}
                             </div>
 
                             <div className="mt-6">
@@ -101,7 +201,6 @@ export default function Register() {
                                 </span>
                             </div>
                         </form>
-
                     </div>
                 </div>
             </div>

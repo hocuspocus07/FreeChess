@@ -1,8 +1,8 @@
 import User from "../models/User.models.js";
-import jwt from 'jsonwebtoken'
-import dotenv from 'dotenv'
+import jwt from "jsonwebtoken";
+import dotenv from "dotenv";
 
-dotenv.config()
+dotenv.config();
 
 export const registerUser = async (req, res) => {
   try {
@@ -13,12 +13,19 @@ export const registerUser = async (req, res) => {
         .status(400)
         .json({ message: "Please enter username, email, and password." });
     }
-
+    try {
+      await User.validateUsername(username);
+    } catch (validationError) {
+      return res.status(400).json({ message: validationError.message });
+    }
     const existingUser = await User.findByEmail(email);
     if (existingUser) {
       return res.status(400).json({ message: "User already exists" });
     }
-
+    const existingUsername = await User.findByUsername(username);
+    if (existingUsername) {
+      return res.status(400).json({ message: "Username already taken" });
+    }
     const userId = await User.create(username, email, password);
 
     const newUser = await User.findById(userId);
@@ -57,25 +64,25 @@ export const loginUser = async (req, res) => {
       process.env.REFRESH_TOKEN_SECRET,
       { expiresIn: process.env.REFRESH_TOKEN_EXPIRY }
     );
-console.log(accessToken,refreshToken);
+    console.log(accessToken, refreshToken);
     await User.updateRefreshToken(user.id, refreshToken);
 
     // Set cookies
-    res.cookie('accessToken', accessToken, { 
-      httpOnly: true, 
-      secure: process.env.NODE_ENV === 'production', 
-      sameSite: 'lax',
+    res.cookie("accessToken", accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
     });
-    
-    res.cookie('refreshToken', refreshToken, { 
-      httpOnly: true, 
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
     });
-    res.status(200).json({ 
-      message: "User logged in successfully!", 
+    res.status(200).json({
+      message: "User logged in successfully!",
       token: accessToken,
-      user: { id: user.id, username: user.username } 
+      user: { id: user.id, username: user.username },
     });
     console.log("LOGIN SUCCESS!");
   } catch (error) {
@@ -90,50 +97,52 @@ export const getUserDetails = async (req, res) => {
     if (user) {
       res.status(200).json({ user });
     } else {
-      res.status(404).json({ error: 'User not found' });
+      res.status(404).json({ error: "User not found" });
     }
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch user details' });
+    res.status(500).json({ error: "Failed to fetch user details" });
   }
 };
 
 export const logoutUser = async (req, res) => {
   try {
-    console.log('User ID:', req.user.id);
+    console.log("User ID:", req.user.id);
     const userId = req.user.id;
 
     await User.updateRefreshToken(userId, null);
 
-    res.clearCookie('accessToken', { httpOnly: true, secure: true });
-    res.clearCookie('refreshToken', { httpOnly: true, secure: true });
+    res.clearCookie("accessToken", { httpOnly: true, secure: true });
+    res.clearCookie("refreshToken", { httpOnly: true, secure: true });
 
-    res.status(200).json({ message: 'USER LOGGED OUT SUCCESSFULLY' });
+    res.status(200).json({ message: "USER LOGGED OUT SUCCESSFULLY" });
   } catch (error) {
-    console.error('Logout Error:', error); 
-    res.status(500).json({ error: 'Failed to log out', details: error.message });
+    console.error("Logout Error:", error);
+    res
+      .status(500)
+      .json({ error: "Failed to log out", details: error.message });
   }
 };
 
 export const refreshAccessToken = async (req, res) => {
   try {
     const refreshToken = req.cookies?.refreshToken || req.body?.refreshToken;
-    
-    console.log('Received refresh token:', refreshToken); // Debug log
+
+    console.log("Received refresh token:", refreshToken); // Debug log
 
     if (!refreshToken) {
-      console.log('No refresh token provided');
-      return res.status(401).json({ error: 'No refresh token provided' });
+      console.log("No refresh token provided");
+      return res.status(401).json({ error: "No refresh token provided" });
     }
 
     // Verify the token first
     const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
-    console.log('Decoded refresh token:', decoded);
+    console.log("Decoded refresh token:", decoded);
 
     // Then find the user
     const user = await User.findByRefreshToken(refreshToken);
     if (!user) {
-      console.log('No user found with this refresh token');
-      return res.status(403).json({ error: 'Invalid refresh token' });
+      console.log("No user found with this refresh token");
+      return res.status(403).json({ error: "Invalid refresh token" });
     }
 
     // Generate new access token
@@ -144,31 +153,30 @@ export const refreshAccessToken = async (req, res) => {
     );
 
     // Set the new access token cookie
-    res.cookie('accessToken', newAccessToken, { 
-      httpOnly: true, 
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 15 * 60 * 1000 // 15 minutes
+    res.cookie("accessToken", newAccessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 15 * 60 * 1000, // 15 minutes
     });
 
-    return res.status(200).json({ 
-      message: 'Access token refreshed', 
-      accessToken: newAccessToken 
+    return res.status(200).json({
+      message: "Access token refreshed",
+      accessToken: newAccessToken,
     });
-
   } catch (error) {
-    console.error('Refresh token error:', error);
-    
-    if (error.name === 'TokenExpiredError') {
-      return res.status(403).json({ error: 'Refresh token expired' });
+    console.error("Refresh token error:", error);
+
+    if (error.name === "TokenExpiredError") {
+      return res.status(403).json({ error: "Refresh token expired" });
     }
-    if (error.name === 'JsonWebTokenError') {
-      return res.status(403).json({ error: 'Invalid refresh token' });
+    if (error.name === "JsonWebTokenError") {
+      return res.status(403).json({ error: "Invalid refresh token" });
     }
-    
-    return res.status(500).json({ 
-      error: 'Failed to refresh access token', 
-      details: error.message 
+
+    return res.status(500).json({
+      error: "Failed to refresh access token",
+      details: error.message,
     });
   }
 };
@@ -176,15 +184,17 @@ export const refreshAccessToken = async (req, res) => {
 export const searchUsersByUsername = async (req, res) => {
   try {
     const { query } = req.query;
-    
+
     if (!query) {
-      return res.status(400).json({ message: 'Search query is required' });
+      return res.status(400).json({ message: "Search query is required" });
     }
 
-    const users = await User.searchByUsername(query); 
+    const users = await User.searchByUsername(query);
     res.status(200).json({ users });
   } catch (error) {
-    res.status(500).json({ message: 'Error searching users', error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error searching users", error: error.message });
   }
 };
 
@@ -193,7 +203,8 @@ export const searchUsersByUsername = async (req, res) => {
 export const sendFriendRequest = async (req, res) => {
   const { friendId } = req.body;
   const userId = req.user.id;
-  if (userId === friendId) return res.status(400).json({ message: "Cannot add yourself." });
+  if (userId === friendId)
+    return res.status(400).json({ message: "Cannot add yourself." });
   await User.sendFriendRequest(userId, friendId);
   res.json({ message: "Friend request sent." });
 };
@@ -235,7 +246,7 @@ export const getFriendshipStatus = async (req, res) => {
   const userId = req.user.id;
   const { otherUserId } = req.params;
   const status = await User.getFriendStatus(userId, otherUserId);
-  if (!status) return res.json({ status: 'none' });
+  if (!status) return res.json({ status: "none" });
   return res.json({ status });
 };
 
@@ -244,10 +255,10 @@ export const updateUserAvatar = async (req, res) => {
   try {
     const { userId } = req.params;
     const { avatar } = req.body;
-    
+
     await User.updateAvatar(userId, avatar);
-    res.status(200).json({ message: 'Avatar updated successfully' });
+    res.status(200).json({ message: "Avatar updated successfully" });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to update avatar' });
+    res.status(500).json({ error: "Failed to update avatar" });
   }
 };

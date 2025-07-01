@@ -9,6 +9,21 @@ class User {
     );
     return result.rows[0].id;
   }
+  //validating username input
+static async validateUsername(username) {
+  if (/\s/.test(username)) {
+    throw new Error("Username cannot contain spaces");
+  }
+  if (/[A-Z]/.test(username)) {
+    throw new Error("Username cannot contain capital letters");
+  }
+  if (username.length < 3) {
+    throw new Error("Username must be at least 3 characters");
+  }
+  if (username.length > 20) {
+    throw new Error("Username must be less than 20 characters");
+  }
+}
 
   static async findByEmail(email) {
     const result = await pool.query("SELECT * FROM users WHERE email=$1", [
